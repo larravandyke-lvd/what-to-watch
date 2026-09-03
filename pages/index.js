@@ -443,7 +443,7 @@ export default function Home() {
               )}
 
               <div className="method-row">
-                {[["type", "⌨", "Type it"], ["photo", "📷", "Photo of TV"], ["upload", "🖼", "Screenshot"], ["paste", "📋", "Paste image"]].map(([m, ic, label]) => (
+                {[["type", "⌨", "Type it"], ["photo", "📷", "Take a pic"], ["upload", "🖼", "Screenshot"], ["paste", "📋", "Paste image"]].map(([m, ic, label]) => (
                   <div key={m} className={`method-btn ${method === m ? "active" : ""}`}
                     onClick={() => {
                       setMethod(m);
