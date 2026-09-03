@@ -717,33 +717,41 @@ export default function Home() {
               {discoverLoading && (
                 <div className="status-line"><div className="spinner"></div><span>Loading…</span></div>
               )}
-              {discoverData && !discoverLoading && (
-                <>
-                  {discoverFilter === "movies" ? (
-                    <>
-                      <DiscoverRow title="In Theaters Now" items={discoverData.nowPlaying}
-                        onPick={(item) => quickAddFromDiscover(item, "theaters")} />
-                      <DiscoverRow title="Trending This Week" items={discoverData.trending.filter((x) => x.type === "Movie")}
-                        onPick={(item) => quickAddFromDiscover(item, "consider")} />
-                      <DiscoverRow title="Coming Soon" items={discoverData.upcoming}
-                        onPick={(item) => quickAddFromDiscover(item, "consider")} />
-                      {discoverData.nowPlaying.length === 0 && discoverData.upcoming.length === 0 && (
-                        <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
-                      )}
-                    </>
-                  ) : (
-                    <>
-                      <DiscoverRow title="New Episodes This Week" items={discoverData.onTheAir}
-                        onPick={(item) => quickAddFromDiscover(item, "want")} />
-                      <DiscoverRow title="Trending This Week" items={discoverData.trending.filter((x) => x.type === "TV Show")}
-                        onPick={(item) => quickAddFromDiscover(item, "consider")} />
-                      {discoverData.onTheAir.length === 0 && discoverData.trending.filter((x) => x.type === "TV Show").length === 0 && (
-                        <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
+              {discoverData && !discoverLoading && (() => {
+                const nowPlaying = discoverData.nowPlaying || [];
+                const upcoming = discoverData.upcoming || [];
+                const onTheAir = discoverData.onTheAir || [];
+                const trending = discoverData.trending || [];
+                const trendingMovies = trending.filter((x) => x.type === "Movie");
+                const trendingShows = trending.filter((x) => x.type === "TV Show");
+                return (
+                  <>
+                    {discoverFilter === "movies" ? (
+                      <>
+                        <DiscoverRow title="In Theaters Now" items={nowPlaying}
+                          onPick={(item) => quickAddFromDiscover(item, "theaters")} />
+                        <DiscoverRow title="Trending This Week" items={trendingMovies}
+                          onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                        <DiscoverRow title="Coming Soon" items={upcoming}
+                          onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                        {nowPlaying.length === 0 && upcoming.length === 0 && trendingMovies.length === 0 && (
+                          <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <DiscoverRow title="New Episodes This Week" items={onTheAir}
+                          onPick={(item) => quickAddFromDiscover(item, "want")} />
+                        <DiscoverRow title="Trending This Week" items={trendingShows}
+                          onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                        {onTheAir.length === 0 && trendingShows.length === 0 && (
+                          <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                        )}
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
