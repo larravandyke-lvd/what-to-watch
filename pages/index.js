@@ -375,9 +375,9 @@ export default function Home() {
       </div>
 
       <div className="tabs">
-        {["all", "consider", "want", "watching", "watched"].map((s) => (
+        {["all", "consider", "theaters", "want", "watching", "watched"].map((s) => (
           <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
-            {s === "all" ? "All" : s === "consider" ? "Considering" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+            {s === "all" ? "All" : s === "consider" ? "Considering" : s === "theaters" ? "In Theaters" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
             <span className="count">
               ({s === "all" ? entries.length : entries.filter((e) => e.status === s).length})
             </span>
@@ -436,19 +436,26 @@ export default function Home() {
       {sheetOpen && (
         <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) closeSheet(); }}>
           <div className="sheet">
+            <div className="sheet-header-bar">
+              <h2>{editingId ? "Edit" : "Add something"}</h2>
+              <button className="sheet-close" onClick={closeSheet}>✕ Close</button>
+            </div>
             {(thumbPreview || pendingBackdrop) && (
               <img className="sheet-hero" src={thumbPreview || pendingBackdrop} alt="" />
             )}
             <div className="sheet-inner">
-              <button className="sheet-close" onClick={closeSheet}>✕</button>
-              <h2>{editingId ? "Edit" : "Add something"}</h2>
-
               {editingEntry && (
                 <div className="card-actions" style={{ marginBottom: "8px" }}>
                   {editingEntry.status === "consider" && (
                     <>
                       <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Add to my list</button>
                       <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
+                    </>
+                  )}
+                  {editingEntry.status === "theaters" && (
+                    <>
+                      <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watched"); setStatus("watched"); }}>Saw it</button>
+                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Wait for streaming</button>
                     </>
                   )}
                   {editingEntry.status === "want" && (
@@ -539,7 +546,7 @@ export default function Home() {
 
               <label>Status</label>
               <div className="multichip-row">
-                {[["consider", "Considering"], ["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
+                {[["consider", "Considering"], ["theaters", "In Theaters"], ["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
                   <div key={s} className={`multichip ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{label}</div>
                 ))}
               </div>
@@ -606,6 +613,7 @@ function EmptyState({ tab }) {
   const msg = {
     all: "Nothing tracked yet. Tap + to add the first thing.",
     consider: "Nothing to weigh in on yet. Add something you're on the fence about.",
+    theaters: "Nothing on the big screen radar. Add a movie you want to catch before it's gone.",
     want: "Nothing on the list yet. Tap + to add the next thing you hear about.",
     watching: "Nothing in progress. Move something here once you start it.",
     watched: "Nothing watched yet — your history will collect here.",
@@ -669,8 +677,8 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
             <p className="card-title">{e.title}</p>
             <p className="card-sub">
               {e.type}{e.year ? " (" + e.year + ")" : ""}{e.cast ? " · " + e.cast : ""}
-              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : e.status === "consider" ? "var(--teal)" : "var(--text-muted)" }}>
-                {e.status === "consider" ? "Considering" : e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
+              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : e.status === "consider" ? "var(--teal)" : e.status === "theaters" ? "var(--red)" : "var(--text-muted)" }}>
+                {e.status === "consider" ? "Considering" : e.status === "theaters" ? "In Theaters" : e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
               </span>
             </p>
           </div>
@@ -708,6 +716,10 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           {e.status === "consider" && <>
             <button className="btn-mini primary" onClick={() => onMove(e.id, "want")}>Add to my list</button>
             <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Start watching</button>
+          </>}
+          {e.status === "theaters" && <>
+            <button className="btn-mini primary" onClick={() => onMove(e.id, "watched")}>Saw it</button>
+            <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Wait for streaming</button>
           </>}
           {e.status === "want" && <button className="btn-mini primary" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
           {e.status === "watching" && <>

@@ -133,6 +133,7 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 }
 .tile-status-dot.want{ background:var(--text-muted); }
 .tile-status-dot.consider{ background:var(--teal); }
+.tile-status-dot.theaters{ background:var(--red); }
 .tile-status-dot.watching{ background:var(--gold); }
 .tile-status-dot.watched{ background:var(--green); }
 
@@ -154,6 +155,7 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 .card-body::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; }
 .card.want .card-body::before{ background:var(--text-muted); }
 .card.consider .card-body::before{ background:var(--teal); }
+.card.theaters .card-body::before{ background:var(--red); }
 .card.watching .card-body::before{ background:var(--gold); }
 .card.watched .card-body::before{ background:var(--green); }
 
@@ -212,8 +214,18 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 }
 .sheet-hero{ width:100%; height:160px; object-fit:cover; display:block; background:var(--surface-raised); }
 .sheet-inner{ padding:16px 18px 0; }
-.sheet h2{ margin:0 0 14px; font-size:22px; color:var(--gold); }
-.sheet-close{ float:right; background:none; border:none; color:var(--text-muted); font-size:20px; cursor:pointer; }
+.sheet h2{ margin:0; font-size:20px; color:var(--gold); }
+.sheet-header-bar{
+  position:sticky; top:0; z-index:20; background:var(--surface);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 18px; border-bottom:1px solid var(--line);
+}
+.sheet-close{
+  background:var(--surface-raised); border:1px solid var(--line); color:var(--text-muted);
+  font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:16px; cursor:pointer; font-family:inherit;
+  flex-shrink:0;
+}
+.sheet-close:hover{ color:var(--gold); border-color:var(--gold-dim); }
 
 label{ display:block; font-size:11.5px; color:var(--text-muted); margin:12px 0 5px; }
 input[type=text], textarea, select.full{
