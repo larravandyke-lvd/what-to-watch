@@ -628,23 +628,22 @@ function rtClass(score) {
 function Tile({ e, onOpen, logo }) {
   return (
     <div className="tile" onClick={() => onOpen(e)}>
-      <div className={`tile-status-dot ${e.status}`}></div>
-      {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
-        <div className={`tile-rt ${rtClass(e.rtScore)}`}>🍅 {e.rtScore}%</div>
-      )}
       <div className="tile-media">
+        <div className={`tile-status-dot ${e.status}`}></div>
+        {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
+          <div className={`tile-rt ${rtClass(e.rtScore)}`}>🍅 {e.rtScore}%</div>
+        )}
         {e.backdropUrl ? (
           <img src={e.backdropUrl} alt="" />
         ) : (
           <div className="tile-fallback">🍿</div>
         )}
-        <div className="tile-fade"></div>
-        <div className="tile-info">
-          <div className="tile-title">{e.title}</div>
-          <div className="tile-sub">
-            {logo ? <img className="service-logo" src={logo} alt={e.service} /> : (e.service || e.type)}
-            {e.episode ? ` · ${e.episode}` : ""}
-          </div>
+      </div>
+      <div className="tile-caption">
+        <div className="tile-title">{e.title}</div>
+        <div className="tile-sub">
+          {logo ? <img className="service-logo" src={logo} alt={e.service} /> : <span>{e.service || e.type}</span>}
+          {e.episode ? <span>{" · " + e.episode}</span> : null}
         </div>
       </div>
     </div>
