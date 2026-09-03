@@ -46,6 +46,15 @@ export default function Home() {
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
 
+  // Always start at the top — prevents the browser from restoring a scrolled
+  // position from a previous visit, which hides the header on reopen.
+  useEffect(() => {
+    if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
+
   // ---------- Realtime sync ----------
   useEffect(() => {
     const unsub = onSnapshot(
