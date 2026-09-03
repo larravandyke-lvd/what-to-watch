@@ -518,17 +518,24 @@ export default function Home() {
               <label>Streaming service / network</label>
               <input type="text" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Hulu, Netflix, ABC" />
 
+              <label>Rotten Tomatoes score</label>
+              {form.rtScore !== "" && (
+                <a className="rt-badge" href={form.rtLink || "#"} target="_blank" rel="noopener noreferrer" style={{ marginBottom: "8px" }}>
+                  <span className={rtClass(form.rtScore)}>🍅</span>{form.rtScore}%
+                </a>
+              )}
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input type="text" value={form.rtScore} style={{ flex: "0 0 90px" }}
+                  onChange={(e) => setForm({ ...form, rtScore: e.target.value })} placeholder="e.g. 81" />
+                <input type="text" value={form.rtLink} style={{ flex: 1 }}
+                  onChange={(e) => setForm({ ...form, rtLink: e.target.value })} placeholder="Link to reviews (https://...)" />
+              </div>
+
               <label>Genres (comma separated)</label>
               <input type="text" value={form.genres} onChange={(e) => setForm({ ...form, genres: e.target.value })} placeholder="e.g. Drama, Mystery, Dark Comedy" />
 
               <label>Top cast</label>
               <input type="text" value={form.cast} onChange={(e) => setForm({ ...form, cast: e.target.value })} placeholder="e.g. Teri Hatcher, Felicity Huffman" />
-
-              <label>Rotten Tomatoes score (%)</label>
-              <input type="text" value={form.rtScore} onChange={(e) => setForm({ ...form, rtScore: e.target.value })} placeholder="e.g. 81" />
-
-              <label>Link to reviews</label>
-              <input type="text" value={form.rtLink} onChange={(e) => setForm({ ...form, rtLink: e.target.value })} placeholder="https://..." />
 
               <label>Who's it for</label>
               <div className="multichip-row">
