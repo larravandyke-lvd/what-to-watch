@@ -47,6 +47,7 @@ export default function Home() {
   const [navList, setNavList] = useState(null);
   const [navIndex, setNavIndex] = useState(0);
   const [relatedLoadingId, setRelatedLoadingId] = useState(null);
+  const pendingNewEntryEnrichRef = useRef(null);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -210,33 +211,62 @@ export default function Home() {
   }
 
   async function runEnrichment(title, year, serviceHint) {
+    const targetId = editingId; // capture at call time — safe even if user navigates away
     setAiStatus("Looking up details…");
-    try {
-      const data = await callApi("/api/enrich", { title, year: year || "", serviceHint: serviceHint || "" });
-      const gotSomething = data && (data.type || data.service || (data.genres && data.genres.length) || (data.cast && data.cast.length));
-      setForm((f) => ({
-        ...f,
-        title: data.title || f.title,
-        type: data.type || f.type,
-        year: data.year ? String(data.year) : f.year,
-        service: data.service || f.service,
-        genres: (data.genres && data.genres.length) ? data.genres.join(", ") : f.genres,
-        cast: (data.cast && data.cast.length) ? data.cast.join(", ") : f.cast,
-        rtScore: data.rtScore ?? f.rtScore,
-        rtLink: data.rtLink || f.rtLink,
-        description: data.synopsis || f.description,
-      }));
-      // fetch backdrop in parallel, non-blocking
-      callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
-        .then((b) => {
-          setPendingBackdrop(b.backdropUrl || null);
-          if (b.watchLink) setForm((f) => ({ ...f, watchLink: b.watchLink }));
-        })
-        .catch(() => {});
-      setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
-    } catch (e) {
-      setAiStatus("Couldn't look that up — fill in manually");
+    const enrichPromise = (async () => {
+      try {
+        const data = await callApi("/api/enrich", { title, year: year || "", serviceHint: serviceHint || "" });
+        const gotSomething = data && (data.type || data.service || (data.genres && data.genres.length) || (data.cast && data.cast.length));
+        setForm((f) => ({
+          ...f,
+          title: data.title || f.title,
+          type: data.type || f.type,
+          year: data.year ? String(data.year) : f.year,
+          service: data.service || f.service,
+          genres: (data.genres && data.genres.length) ? data.genres.join(", ") : f.genres,
+          cast: (data.cast && data.cast.length) ? data.cast.join(", ") : f.cast,
+          rtScore: data.rtScore ?? f.rtScore,
+          rtLink: data.rtLink || f.rtLink,
+          description: data.synopsis || f.description,
+        }));
+        if (targetId) {
+          const fsPatch = {};
+          if (data.type) fsPatch.type = data.type;
+          if (data.year) fsPatch.year = String(data.year);
+          if (data.service) fsPatch.service = data.service;
+          if (data.genres && data.genres.length) fsPatch.genres = data.genres;
+          if (data.cast && data.cast.length) fsPatch.cast = data.cast.join(", ");
+          if (data.rtScore != null) fsPatch.rtScore = data.rtScore;
+          if (data.rtLink) fsPatch.rtLink = data.rtLink;
+          if (data.synopsis) fsPatch.description = data.synopsis;
+          if (Object.keys(fsPatch).length) {
+            updateDoc(doc(db, "entries", targetId), fsPatch).catch((e) => console.error(e));
+          }
+        }
+        // fetch backdrop in parallel, non-blocking
+        callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
+          .then((b) => {
+            setPendingBackdrop(b.backdropUrl || null);
+            if (b.watchLink) setForm((f) => ({ ...f, watchLink: b.watchLink }));
+            if (targetId) {
+              const bPatch = {};
+              if (b.backdropUrl) bPatch.backdropUrl = b.backdropUrl;
+              if (b.watchLink) bPatch.watchLink = b.watchLink;
+              if (Object.keys(bPatch).length) updateDoc(doc(db, "entries", targetId), bPatch).catch(() => {});
+            }
+          })
+          .catch(() => {});
+        setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
+        return data;
+      } catch (e) {
+        setAiStatus("Couldn't look that up — fill in manually");
+        return null;
+      }
+    })();
+    if (!targetId) {
+      pendingNewEntryEnrichRef.current = { title, promise: enrichPromise };
     }
+    return enrichPromise;
   }
 
   async function analyzePhoto(file) {
@@ -587,7 +617,25 @@ export default function Home() {
       if (editingId) {
         await updateDoc(doc(db, "entries", editingId), payload);
       } else {
-        await addDoc(collection(db, "entries"), { ...payload, related: [], createdAt: Date.now() });
+        const docRef = await addDoc(collection(db, "entries"), { ...payload, related: [], createdAt: Date.now() });
+        const pending = pendingNewEntryEnrichRef.current;
+        if (pending && pending.title === form.title.trim()) {
+          const newId = docRef.id;
+          pending.promise.then((data) => {
+            if (!data) return;
+            const fsPatch = {};
+            if (data.type) fsPatch.type = data.type;
+            if (data.year) fsPatch.year = String(data.year);
+            if (data.service) fsPatch.service = data.service;
+            if (data.genres && data.genres.length) fsPatch.genres = data.genres;
+            if (data.cast && data.cast.length) fsPatch.cast = data.cast.join(", ");
+            if (data.rtScore != null) fsPatch.rtScore = data.rtScore;
+            if (data.rtLink) fsPatch.rtLink = data.rtLink;
+            if (data.synopsis) fsPatch.description = data.synopsis;
+            if (Object.keys(fsPatch).length) updateDoc(doc(db, "entries", newId), fsPatch).catch(() => {});
+          });
+          pendingNewEntryEnrichRef.current = null;
+        }
       }
       setSyncStatus("Synced across devices");
       setCurrentTab(status);
@@ -1109,24 +1157,6 @@ export default function Home() {
                   {editingEntry.watchLink && (
                     <a className="btn-mini primary" href={editingEntry.watchLink} target="_blank" rel="noopener noreferrer">▶ Watch now</a>
                   )}
-                  {editingEntry.status === "consider" && (
-                    <>
-                      <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Add to my list</button>
-                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
-                    </>
-                  )}
-                  {editingEntry.status === "want" && (
-                    <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
-                  )}
-                  {editingEntry.status === "watching" && (
-                    <>
-                      <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watched"); setStatus("watched"); }}>Mark watched</button>
-                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Move to Want to Watch</button>
-                    </>
-                  )}
-                  {editingEntry.status === "watched" && (
-                    <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Watch again</button>
-                  )}
                   <button className="btn-mini" onClick={() => findRelated(editingEntry)} disabled={relatedLoadingId === editingEntry.id}>
                     {relatedLoadingId === editingEntry.id ? "Finding…" : "Find similar"}
                   </button>
@@ -1228,7 +1258,10 @@ export default function Home() {
               </div>
 
               <label>What it's about</label>
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="A short synopsis will fill in automatically after Look up." />
+              <textarea className="description-field" value={form.description}
+                onChange={(e) => { setForm({ ...form, description: e.target.value }); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
+                ref={(el) => { if (el) { el.style.height = "auto"; el.style.height = el.scrollHeight + "px"; } }}
+                placeholder="A short synopsis will fill in automatically after Look up." />
 
               <label>Streaming service / network</label>
               <input type="text" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Hulu, Netflix, ABC" />
@@ -1424,12 +1457,12 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
             <a className="btn-mini primary" href={e.watchLink} target="_blank" rel="noopener noreferrer">▶ Watch now</a>
           )}
           {e.status === "consider" && <>
-            <button className="btn-mini primary" onClick={() => onMove(e.id, "want")}>Add to my list</button>
+            <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Add to my list</button>
             <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Start watching</button>
           </>}
-          {e.status === "want" && <button className="btn-mini primary" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
+          {e.status === "want" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
           {e.status === "watching" && <>
-            <button className="btn-mini primary" onClick={() => onMove(e.id, "watched")}>Mark watched</button>
+            <button className="btn-mini" onClick={() => onMove(e.id, "watched")}>Mark watched</button>
             <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Move to Want to Watch</button>
           </>}
           {e.status === "watched" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Watch again</button>}

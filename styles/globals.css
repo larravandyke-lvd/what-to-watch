@@ -291,6 +291,7 @@ select.full{
 .select-arrow-full{ right:16px; }
 .select-arrow-full svg{ width:11px; height:7px; }
 textarea{ resize:vertical; min-height:50px; }
+textarea.description-field{ min-height:110px; }
 
 .method-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
 .method-btn{ flex:1 1 calc(50% - 4px); min-width:110px; padding:14px 8px; border-radius:10px; border:1px solid var(--line); background:var(--surface-raised); color:var(--text); font-size:12px; text-align:center; cursor:pointer; font-family:inherit; }
