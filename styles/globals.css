@@ -281,3 +281,32 @@ textarea{ resize:vertical; min-height:50px; }
   box-shadow:0 4px 14px rgba(79,189,186,0.35);
 }
 .add-pill:hover{ background:#63cac7; box-shadow:0 4px 18px rgba(79,189,186,0.5); }
+
+.discover-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:10px 18px; border-radius:20px; border:1px solid var(--gold-dim);
+  background:var(--surface); color:var(--gold); font-size:13.5px; font-weight:600;
+  cursor:pointer; font-family:inherit;
+}
+.discover-pill:hover{ background:var(--surface-raised); border-color:var(--gold); }
+
+.discover-heading{ font-size:13px; font-weight:700; color:var(--gold); margin-bottom:10px; }
+.discover-scroll{ display:flex; gap:12px; overflow-x:auto; padding-bottom:4px; }
+.discover-card{ position:relative; flex:0 0 104px; cursor:pointer; }
+.discover-card img{
+  width:104px; height:156px; object-fit:cover; border-radius:8px; border:1px solid var(--line);
+  background:var(--surface-raised); display:block;
+}
+.discover-fallback{
+  width:104px; height:156px; display:flex; align-items:center; justify-content:center; font-size:28px;
+  background:var(--surface-raised); border-radius:8px; border:1px solid var(--line);
+}
+.discover-add{
+  position:absolute; top:6px; right:6px; width:24px; height:24px; border-radius:50%;
+  background:var(--gold); color:#1a1a1a; font-size:16px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,0,0,0.4);
+}
+.discover-title{
+  font-size:11px; color:var(--text); margin-top:6px; line-height:1.25;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}

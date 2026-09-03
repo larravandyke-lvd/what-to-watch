@@ -32,6 +32,9 @@ export default function Home() {
   const [serviceLogos, setServiceLogos] = useState({});
   const [candidates, setCandidates] = useState([]);
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [discoverData, setDiscoverData] = useState(null);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
 
@@ -211,6 +214,34 @@ export default function Home() {
     }
   }
 
+  async function openDiscover() {
+    setDiscoverOpen(true);
+    if (discoverData) return;
+    setDiscoverLoading(true);
+    try {
+      const data = await callApi("/api/discover", {}, true);
+      setDiscoverData(data);
+    } catch (e) {
+      setDiscoverData({ trending: [], nowPlaying: [], upcoming: [] });
+    }
+    setDiscoverLoading(false);
+  }
+
+  function quickAddFromDiscover(item, presetStatus) {
+    setCandidates([]);
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, title: item.title, type: item.type });
+    setTags([]);
+    setStatus(presetStatus || "consider");
+    setMethod("type");
+    setThumbPreview(null);
+    setPendingBackdrop(item.backdropUrl || item.posterUrl || null);
+    setShowLinkInput(false);
+    setDiscoverOpen(false);
+    setSheetOpen(true);
+    runEnrichment(item.title, item.year);
+  }
+
   // ---------- Form open/close ----------
   function openAdd() {
     setCandidates([]);
@@ -371,9 +402,12 @@ export default function Home() {
         </div>
       </header>
 
-      <div style={{ padding: "16px 16px 0", display: "flex", justifyContent: "center" }}>
+      <div style={{ padding: "16px 16px 0", display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
         <button className="add-pill" onClick={openAdd}>
           <span style={{ fontSize: "16px" }}>➕</span> Add something
+        </button>
+        <button className="discover-pill" onClick={openDiscover}>
+          🎬 New &amp; Upcoming
         </button>
       </div>
 
@@ -434,6 +468,35 @@ export default function Home() {
               {renderItems(group.items)}
             </div>
           ))
+      )}
+
+      {discoverOpen && (
+        <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) setDiscoverOpen(false); }}>
+          <div className="sheet">
+            <div className="sheet-header-bar">
+              <h2>🎬 New &amp; Upcoming</h2>
+              <button className="sheet-close" onClick={() => setDiscoverOpen(false)}>✕ Close</button>
+            </div>
+            <div className="sheet-inner" style={{ paddingBottom: "28px" }}>
+              {discoverLoading && (
+                <div className="status-line"><div className="spinner"></div><span>Loading…</span></div>
+              )}
+              {discoverData && !discoverLoading && (
+                <>
+                  <DiscoverRow title="In Theaters Now" items={discoverData.nowPlaying}
+                    onPick={(item) => quickAddFromDiscover(item, "theaters")} />
+                  <DiscoverRow title="Trending This Week" items={discoverData.trending}
+                    onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                  <DiscoverRow title="Coming Soon" items={discoverData.upcoming}
+                    onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                  {discoverData.trending.length === 0 && discoverData.nowPlaying.length === 0 && discoverData.upcoming.length === 0 && (
+                    <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {sheetOpen && (
@@ -613,6 +676,28 @@ export default function Home() {
         </div>
       )}
     </>
+  );
+}
+
+function DiscoverRow({ title, items, onPick }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div style={{ marginBottom: "22px" }}>
+      <div className="discover-heading">{title}</div>
+      <div className="discover-scroll">
+        {items.map((item) => (
+          <div key={item.id + item.type} className="discover-card" onClick={() => onPick(item)}>
+            {item.posterUrl ? (
+              <img src={item.posterUrl} alt="" />
+            ) : (
+              <div className="discover-fallback">🎬</div>
+            )}
+            <div className="discover-add">+</div>
+            <div className="discover-title">{item.title}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
