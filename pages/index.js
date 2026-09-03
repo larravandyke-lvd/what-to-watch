@@ -7,7 +7,7 @@ import { db, storage } from "../lib/firebase";
 
 const EMPTY_FORM = {
   title: "", type: "TV Show", year: "", service: "", genres: "", cast: "",
-  rtScore: "", rtLink: "", episode: "", notes: "", description: "",
+  rtScore: "", rtLink: "", episode: "", notes: "", description: "", watchLink: "",
 };
 
 export default function Home() {
@@ -221,7 +221,10 @@ export default function Home() {
       }));
       // fetch backdrop in parallel, non-blocking
       callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
-        .then((b) => setPendingBackdrop(b.backdropUrl || null))
+        .then((b) => {
+          setPendingBackdrop(b.backdropUrl || null);
+          if (b.watchLink) setForm((f) => ({ ...f, watchLink: b.watchLink }));
+        })
         .catch(() => {});
       setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
     } catch (e) {
@@ -464,7 +467,7 @@ export default function Home() {
       title: entry.title, type: entry.type, year: entry.year || "", service: entry.service || "",
       genres: (entry.genres || []).join(", "), cast: entry.cast || "",
       rtScore: entry.rtScore ?? "", rtLink: entry.rtLink || "",
-      episode: entry.episode || "", notes: entry.notes || "", description: entry.description || "",
+      episode: entry.episode || "", notes: entry.notes || "", description: entry.description || "", watchLink: entry.watchLink || "",
     });
     setTags(entry.tags || []);
     setStatus(entry.status);
@@ -508,6 +511,7 @@ export default function Home() {
       episode: form.episode.trim(),
       notes: form.notes.trim(),
       description: form.description.trim(),
+      watchLink: form.watchLink.trim(),
       tags,
       status,
       backdropUrl: pendingBackdrop || null,
@@ -953,6 +957,9 @@ export default function Home() {
             <div className="sheet-inner">
               {editingEntry && (
                 <div className="card-actions" style={{ marginBottom: "8px" }}>
+                  {editingEntry.watchLink && (
+                    <a className="btn-mini primary" href={editingEntry.watchLink} target="_blank" rel="noopener noreferrer">▶ Watch now</a>
+                  )}
                   {editingEntry.status === "consider" && (
                     <>
                       <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Add to my list</button>
@@ -1262,6 +1269,9 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
         )}
 
         <div className="card-actions">
+          {e.watchLink && (
+            <a className="btn-mini primary" href={e.watchLink} target="_blank" rel="noopener noreferrer">▶ Watch now</a>
+          )}
           {e.status === "consider" && <>
             <button className="btn-mini primary" onClick={() => onMove(e.id, "want")}>Add to my list</button>
             <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Start watching</button>
