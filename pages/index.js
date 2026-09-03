@@ -1121,7 +1121,7 @@ export default function Home() {
                   {editingEntry.status === "watching" && (
                     <>
                       <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watched"); setStatus("watched"); }}>Mark watched</button>
-                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Back to list</button>
+                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Move to Want to Watch</button>
                     </>
                   )}
                   {editingEntry.status === "watched" && (
@@ -1430,7 +1430,7 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           {e.status === "want" && <button className="btn-mini primary" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
           {e.status === "watching" && <>
             <button className="btn-mini primary" onClick={() => onMove(e.id, "watched")}>Mark watched</button>
-            <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Back to list</button>
+            <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Move to Want to Watch</button>
           </>}
           {e.status === "watched" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Watch again</button>}
           <button className="btn-mini" onClick={() => onRelated(e)} disabled={relatedLoadingId === e.id}>
