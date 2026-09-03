@@ -31,6 +31,7 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState("Connecting…");
   const [serviceLogos, setServiceLogos] = useState({});
   const [candidates, setCandidates] = useState([]);
+  const [showLinkInput, setShowLinkInput] = useState(false);
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
 
@@ -213,6 +214,7 @@ export default function Home() {
   // ---------- Form open/close ----------
   function openAdd() {
     setCandidates([]);
+    setShowLinkInput(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
     setTags([]);
@@ -225,6 +227,7 @@ export default function Home() {
   }
   function openEdit(entry) {
     setCandidates([]);
+    setShowLinkInput(false);
     setEditingId(entry.id);
     setForm({
       title: entry.title, type: entry.type, year: entry.year || "", service: entry.service || "",
@@ -566,11 +569,15 @@ export default function Home() {
                   <span className={rtClass(form.rtScore)}>🍅</span>{form.rtScore}%
                 </a>
               )}
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                 <input type="text" value={form.rtScore} style={{ flex: "0 0 90px" }}
                   onChange={(e) => setForm({ ...form, rtScore: e.target.value })} placeholder="e.g. 81" />
-                <input type="text" value={form.rtLink} style={{ flex: 1 }}
-                  onChange={(e) => setForm({ ...form, rtLink: e.target.value })} placeholder="Link to reviews (https://...)" />
+                {showLinkInput ? (
+                  <input type="text" value={form.rtLink} style={{ flex: 1 }} autoFocus
+                    onChange={(e) => setForm({ ...form, rtLink: e.target.value })} placeholder="Link to reviews (https://...)" />
+                ) : (
+                  <span className="edit-link-toggle" onClick={() => setShowLinkInput(true)}>✎ Edit link</span>
+                )}
               </div>
 
               <label>Genres (comma separated)</label>
