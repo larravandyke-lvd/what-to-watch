@@ -562,7 +562,7 @@ export default function Home() {
           </select>
           <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
         </div>
-        {["Larra", "Eric", "Family"].map((t) => (
+        {["Larra", "Eric", "Maddie", "Family"].map((t) => (
           <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
         ))}
         {(filterService || filterGenre || activeTags.length > 0) && (
@@ -904,7 +904,7 @@ export default function Home() {
 
               <label>Who's it for</label>
               <div className="multichip-row">
-                {["Larra", "Eric", "Family"].map((t) => (
+                {["Larra", "Eric", "Maddie", "Family"].map((t) => (
                   <div key={t} className={`multichip ${tags.includes(t) ? "on" : ""}`}
                     onClick={() => setTags((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}>{t}</div>
                 ))}
