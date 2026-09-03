@@ -7,7 +7,7 @@ import { db, storage } from "../lib/firebase";
 
 const EMPTY_FORM = {
   title: "", type: "TV Show", year: "", service: "", genres: "", cast: "",
-  rtScore: "", rtLink: "", episode: "", notes: "",
+  rtScore: "", rtLink: "", episode: "", notes: "", description: "",
 };
 
 export default function Home() {
@@ -217,20 +217,15 @@ export default function Home() {
         cast: (data.cast && data.cast.length) ? data.cast.join(", ") : f.cast,
         rtScore: data.rtScore ?? f.rtScore,
         rtLink: data.rtLink || f.rtLink,
+        description: data.synopsis || f.description,
       }));
       // fetch backdrop in parallel, non-blocking
       callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
         .then((b) => setPendingBackdrop(b.backdropUrl || null))
         .catch(() => {});
-      if (data.error) {
-        setAiStatus("ERROR (temporary debug): " + data.error);
-      } else if (data.debug) {
-        setAiStatus("DEBUG (temporary): " + data.debug);
-      } else {
-        setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
-      }
+      setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
     } catch (e) {
-      setAiStatus("Couldn't look that up — fill in manually (" + e.message + ")");
+      setAiStatus("Couldn't look that up — fill in manually");
     }
   }
 
@@ -313,13 +308,7 @@ export default function Home() {
     try {
       const data = await callApi("/api/enrich", { title, year: year || "" });
       setQuickResult({ title, ...data });
-      if (data.error) {
-        setQuickStatus("ERROR (temporary debug): " + data.error);
-      } else if (data.debug) {
-        setQuickStatus("DEBUG (temporary): " + data.debug);
-      } else {
-        setQuickStatus("");
-      }
+      setQuickStatus("");
       if (data.service) {
         callApi("/api/provider-logo", { service: data.service }, true)
           .then((d) => setQuickLogo(d.logoUrl || null))
@@ -328,7 +317,7 @@ export default function Home() {
         setQuickLogo(null);
       }
     } catch (e) {
-      setQuickStatus("Couldn't look that up: " + e.message);
+      setQuickStatus("Couldn't look that up.");
     }
   }
 
@@ -345,6 +334,7 @@ export default function Home() {
       cast: quickResult.cast ? quickResult.cast.join(", ") : "",
       rtScore: quickResult.rtScore ?? "",
       rtLink: quickResult.rtLink || "",
+      description: quickResult.synopsis || "",
     });
     setTags([]);
     setStatus("want");
@@ -440,7 +430,7 @@ export default function Home() {
   function quickAddFromDiscover(item, presetStatus, serviceOverride) {
     setCandidates([]);
     setEditingId(null);
-    setForm({ ...EMPTY_FORM, title: item.title, type: item.type, service: serviceOverride || "" });
+    setForm({ ...EMPTY_FORM, title: item.title, type: item.type, service: serviceOverride || "", description: item.overview || "" });
     setTags([]);
     setStatus(presetStatus || "consider");
     setMethod("type");
@@ -474,7 +464,7 @@ export default function Home() {
       title: entry.title, type: entry.type, year: entry.year || "", service: entry.service || "",
       genres: (entry.genres || []).join(", "), cast: entry.cast || "",
       rtScore: entry.rtScore ?? "", rtLink: entry.rtLink || "",
-      episode: entry.episode || "", notes: entry.notes || "",
+      episode: entry.episode || "", notes: entry.notes || "", description: entry.description || "",
     });
     setTags(entry.tags || []);
     setStatus(entry.status);
@@ -517,6 +507,7 @@ export default function Home() {
       rtLink: form.rtLink.trim(),
       episode: form.episode.trim(),
       notes: form.notes.trim(),
+      description: form.description.trim(),
       tags,
       status,
       backdropUrl: pendingBackdrop || null,
@@ -859,6 +850,9 @@ export default function Home() {
                       {quickResult.genres.map((g) => <span key={g} className="tagchip">{g}</span>)}
                     </div>
                   )}
+                  {quickResult.synopsis && (
+                    <p className="quick-result-synopsis">{quickResult.synopsis}</p>
+                  )}
                   <button className="btn-full primary" style={{ marginTop: "16px" }} onClick={addQuickResultToList}>
                     + Add to my list
                   </button>
@@ -1092,6 +1086,9 @@ export default function Home() {
 
               <label>Top cast</label>
               <input type="text" value={form.cast} onChange={(e) => setForm({ ...form, cast: e.target.value })} placeholder="e.g. Teri Hatcher, Felicity Huffman" />
+
+              <label>What it's about</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="A short synopsis will fill in automatically after Look up." />
 
               <label>Who's it for</label>
               <div className="multichip-row">

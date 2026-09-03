@@ -10,6 +10,7 @@ export default async function handler(req, res) {
     year: (x.release_date || x.first_air_date || "").slice(0, 4) || null,
     posterUrl: x.poster_path ? `https://image.tmdb.org/t/p/w200${x.poster_path}` : null,
     backdropUrl: x.backdrop_path ? `https://image.tmdb.org/t/p/w780${x.backdrop_path}` : null,
+    overview: x.overview || "",
   });
 
   try {
