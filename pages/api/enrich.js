@@ -17,12 +17,20 @@ export default async function handler(req, res) {
 Use current, accurate information. If you cannot find a Rotten Tomatoes page, set rtScore and rtLink to null.`;
     const text = await callClaude(prompt, true);
     let json = extractJSON(text, "{}");
+    let debugText = text;
     if (!json) {
       // One retry — occasional malformed responses are common with web-search-augmented calls.
       const retryText = await callClaude(prompt, true);
       json = extractJSON(retryText, "{}");
+      debugText = retryText;
     }
-    if (!json) return res.status(200).json({});
+    if (!json) return res.status(200).json({ debug: debugText.slice(0, 500) });
+
+    const hasContent = json.type || json.service || (json.genres && json.genres.length) || (json.cast && json.cast.length);
+    if (!hasContent) {
+      // Parsed fine, but Claude returned essentially nothing useful — attach debug so we can see why.
+      return res.status(200).json({ ...json, debug: debugText.slice(0, 500) });
+    }
     res.status(200).json(json);
   } catch (e) {
     res.status(500).json({ error: e.message });
