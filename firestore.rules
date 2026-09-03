@@ -6,5 +6,8 @@ service cloud.firestore {
     match /entries/{entryId} {
       allow read, write: if true;
     }
+    match /meta/{docId} {
+      allow read, write: if true;
+    }
   }
 }
