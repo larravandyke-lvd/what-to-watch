@@ -632,33 +632,39 @@ export default function Home() {
 
       <div className="section-label section-label-divided">Filter &amp; sort</div>
       <div className="filters">
-        <div className="select-wrap">
-          <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="recent">Sort: Recent</option>
-            <option value="alpha">Sort: A–Z</option>
-          </select>
-          <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+        <div className="filters-row">
+          <div className="select-wrap">
+            <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="recent">Sort: Recent</option>
+              <option value="alpha">Sort: A–Z</option>
+            </select>
+            <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+          </div>
+          <div className="select-wrap">
+            <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
+              <option value="">Service</option>
+              {services.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+          </div>
+          <div className="select-wrap">
+            <select className="chip" value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
+              <option value="">Genre</option>
+              {allGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+            <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+          </div>
         </div>
-        <div className="select-wrap">
-          <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-            <option value="">Service</option>
-            {services.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+        <div className="filters-row">
+          {["Larra", "Eric", "Maddie", "Family"].map((t) => (
+            <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
+          ))}
         </div>
-        <div className="select-wrap">
-          <select className="chip" value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
-            <option value="">Genre</option>
-            {allGenres.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-          <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
-        </div>
-        {["Larra", "Eric", "Maddie", "Family"].map((t) => (
-          <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
-        ))}
         {(filterService || filterGenre || activeTags.length > 0) && (
-          <div className="chip clear-chip" onClick={() => { setFilterService(""); setFilterGenre(""); setActiveTags([]); }}>
-            ✕ Clear filters
+          <div className="filters-row">
+            <div className="chip clear-chip" onClick={() => { setFilterService(""); setFilterGenre(""); setActiveTags([]); }}>
+              ✕ Clear filters
+            </div>
           </div>
         )}
       </div>
