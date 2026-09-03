@@ -254,7 +254,7 @@ export default function Home() {
   return (
     <>
       <header>
-        <h1 className="marquee-font">WHAT TO WATCH</h1>
+        <h1 className="marquee-font">🍿 WHAT TO WATCH</h1>
         <p>Snap it, type it, never lose it again.</p>
         <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
       </header>
@@ -428,11 +428,17 @@ export default function Home() {
 
 function EmptyState({ tab }) {
   const msg = {
+    all: "Nothing tracked yet. Tap + to add the first thing.",
     want: "Nothing on the list yet. Tap + to add the next thing you hear about.",
     watching: "Nothing in progress. Move something here once you start it.",
     watched: "Nothing watched yet — your history will collect here.",
   };
-  return <div className="empty"><div className="big">Empty for now</div>{msg[tab]}</div>;
+  return (
+    <div className="empty">
+      <div style={{ fontSize: "40px", marginBottom: "10px" }}>🍿</div>
+      <div className="big">Empty for now</div>{msg[tab]}
+    </div>
+  );
 }
 
 function rtClass(score) {
