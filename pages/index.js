@@ -380,15 +380,16 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="view-toggle">
-        <div className={`vbtn ${viewMode === "flat" ? "active" : ""}`} onClick={() => setViewMode("flat")}>All</div>
-        <div className={`vbtn ${viewMode === "genre" ? "active" : ""}`} onClick={() => setViewMode("genre")}>By Genre</div>
-        <div className={`vbtn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
-      </div>
-
-      <div className="view-toggle">
-        <div className={`vbtn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
-        <div className={`vbtn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
+      <div className="mode-row">
+        <div className="mode-group">
+          <div className={`mode-btn ${viewMode === "flat" ? "active" : ""}`} onClick={() => setViewMode("flat")}>All</div>
+          <div className={`mode-btn ${viewMode === "genre" ? "active" : ""}`} onClick={() => setViewMode("genre")}>By Genre</div>
+          <div className={`mode-btn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
+        </div>
+        <div className="mode-group">
+          <div className={`mode-btn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
+          <div className={`mode-btn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
+        </div>
       </div>
 
       <div className="filters">
