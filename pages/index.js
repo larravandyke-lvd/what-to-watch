@@ -140,7 +140,7 @@ export default function Home() {
     return res.json();
   }
 
-  async function startLookup(title) {
+  async function startLookup(title, serviceHint) {
     if (!title) return;
     setCandidates([]);
     setAiStatus("Searching…");
@@ -149,14 +149,16 @@ export default function Home() {
       const results = data.results || [];
       if (results.length <= 1) {
         setAiStatus("");
-        runEnrichment(title, results[0]?.year || "");
+        const canonicalTitle = results[0]?.title || title;
+        if (canonicalTitle !== title) setForm((f) => ({ ...f, title: canonicalTitle }));
+        runEnrichment(canonicalTitle, results[0]?.year || "", serviceHint);
       } else {
         setAiStatus("");
         setCandidates(results);
       }
     } catch (e) {
       setAiStatus("");
-      runEnrichment(title);
+      runEnrichment(title, "", serviceHint);
     }
   }
 
@@ -167,13 +169,14 @@ export default function Home() {
     runEnrichment(c.title, c.year);
   }
 
-  async function runEnrichment(title, year) {
+  async function runEnrichment(title, year, serviceHint) {
     setAiStatus("Looking up details…");
     try {
-      const data = await callApi("/api/enrich", { title, year: year || "" });
+      const data = await callApi("/api/enrich", { title, year: year || "", serviceHint: serviceHint || "" });
       const gotSomething = data && (data.type || data.service || (data.genres && data.genres.length) || (data.cast && data.cast.length));
       setForm((f) => ({
         ...f,
+        title: data.title || f.title,
         type: data.type || f.type,
         year: data.year ? String(data.year) : f.year,
         service: data.service || f.service,
@@ -212,7 +215,7 @@ export default function Home() {
           if (result.episode && result.episode !== "null") {
             setStatus("watching");
           }
-          await runEnrichment(result.title);
+          await runEnrichment(result.title, "", result.service && result.service !== "null" ? result.service : "");
         } else {
           setAiStatus("Couldn't read the image — type the title instead");
         }
@@ -843,12 +846,12 @@ export default function Home() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && form.title.trim()) {
                       e.preventDefault();
-                      startLookup(form.title.trim());
+                      startLookup(form.title.trim(), form.service.trim());
                     }
                   }}
                   placeholder="e.g. Desperate Housewives" />
                 <button type="button" className="btn-mini primary" style={{ flexShrink: 0 }}
-                  onClick={() => form.title.trim() && startLookup(form.title.trim())}>
+                  onClick={() => form.title.trim() && startLookup(form.title.trim(), form.service.trim())}>
                   Look up
                 </button>
               </div>
