@@ -242,7 +242,12 @@ export default function Home() {
   function groupBy(field) {
     const groups = {};
     filtered.forEach((e) => {
-      const keys = field === "genres" ? (e.genres && e.genres.length ? e.genres : ["Uncategorized"]) : [e.service || "Unlisted"];
+      let keys;
+      if (field === "genres") {
+        keys = filterGenre ? [filterGenre] : (e.genres && e.genres.length ? e.genres : ["Uncategorized"]);
+      } else {
+        keys = filterService ? [filterService] : [e.service || "Unlisted"];
+      }
       keys.forEach((k) => {
         if (!groups[k]) groups[k] = [];
         groups[k].push(e);
@@ -254,6 +259,7 @@ export default function Home() {
   return (
     <>
       <header>
+        <div style={{ fontSize: "12px", letterSpacing: "0.15em", color: "var(--gold-dim)", marginBottom: "2px" }}>CVD</div>
         <h1 className="marquee-font">🍿 WHAT TO WATCH</h1>
         <p>Snap it, type it, never lose it again.</p>
         <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
