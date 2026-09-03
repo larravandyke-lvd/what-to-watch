@@ -753,6 +753,7 @@ export default function Home() {
     <>
       <header>
         <div style={{ fontSize: "12px", letterSpacing: "0.15em", color: "var(--gold-dim)", marginBottom: "2px" }}>CVD</div>
+        <a href="https://portals-gateway.vercel.app" style={{ position: "absolute", top: "14px", left: "14px", fontSize: "11px", fontWeight: 700, color: "var(--gold-dim)", textDecoration: "none" }}>🔗 Portals Menu</a>
         <h1 className="marquee-font">🍿 WHAT TO WATCH</h1>
         <p>Snap it, type it, never lose it again.</p>
         <div className="sync-row">
