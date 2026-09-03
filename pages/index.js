@@ -360,7 +360,12 @@ export default function Home() {
         <div style={{ fontSize: "12px", letterSpacing: "0.15em", color: "var(--gold-dim)", marginBottom: "2px" }}>CVD</div>
         <h1 className="marquee-font">🍿 WHAT TO WATCH</h1>
         <p>Snap it, type it, never lose it again.</p>
-        <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
+        <div className="sync-row">
+          <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
+          <button className="refresh-btn" onClick={() => window.location.reload()} title="Refresh">
+            ⟳ Refresh
+          </button>
+        </div>
       </header>
 
       <div style={{ padding: "16px 16px 0", display: "flex", justifyContent: "center" }}>

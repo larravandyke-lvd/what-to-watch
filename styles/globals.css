@@ -42,6 +42,13 @@ header h1{
 header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 .sync-line{ font-size:11px; color:var(--text-muted); margin-top:6px; }
 .sync-line.error{ color:var(--red); }
+.sync-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; }
+.sync-row .sync-line{ margin-top:0; }
+.refresh-btn{
+  font-size:11px; color:var(--text-muted); background:transparent; border:1px solid var(--line);
+  border-radius:12px; padding:2px 9px; cursor:pointer; font-family:inherit;
+}
+.refresh-btn:hover{ color:var(--gold); border-color:var(--gold-dim); }
 
 .tabs{
   display:flex; flex-wrap:wrap;
