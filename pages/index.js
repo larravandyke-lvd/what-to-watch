@@ -6,7 +6,7 @@ import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
 
 const EMPTY_FORM = {
-  title: "", type: "TV Show", service: "", genres: "", cast: "",
+  title: "", type: "TV Show", year: "", service: "", genres: "", cast: "",
   rtScore: "", rtLink: "", episode: "", notes: "",
 };
 
@@ -18,6 +18,7 @@ export default function Home() {
   const [filterService, setFilterService] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [activeTags, setActiveTags] = useState([]);
+  const [sortBy, setSortBy] = useState("alpha"); // alpha | recent
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -29,6 +30,7 @@ export default function Home() {
   const [aiStatus, setAiStatus] = useState("");
   const [syncStatus, setSyncStatus] = useState("Connecting…");
   const [serviceLogos, setServiceLogos] = useState({});
+  const [candidates, setCandidates] = useState([]);
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
 
@@ -96,13 +98,46 @@ export default function Home() {
     return res.json();
   }
 
-  async function runEnrichment(title) {
+  async function startLookup(title) {
+    if (!title) return;
+    setCandidates([]);
+    // If a year is already specified, the person has disambiguated manually — skip the picker.
+    if (form.year.trim()) {
+      runEnrichment(title, form.year.trim());
+      return;
+    }
+    setAiStatus("Searching…");
+    try {
+      const data = await callApi("/api/search-titles", { title }, true);
+      const results = data.results || [];
+      if (results.length <= 1) {
+        setAiStatus("");
+        runEnrichment(title, results[0]?.year || "");
+      } else {
+        setAiStatus("");
+        setCandidates(results);
+      }
+    } catch (e) {
+      setAiStatus("");
+      runEnrichment(title);
+    }
+  }
+
+  function pickCandidate(c) {
+    setForm((f) => ({ ...f, title: c.title, type: c.type, year: c.year || f.year }));
+    if (c.posterUrl) setPendingBackdrop(c.posterUrl);
+    setCandidates([]);
+    runEnrichment(c.title, c.year);
+  }
+
+  async function runEnrichment(title, year) {
     setAiStatus("Looking up details…");
     try {
-      const data = await callApi("/api/enrich", { title });
+      const data = await callApi("/api/enrich", { title, year: year || "" });
       setForm((f) => ({
         ...f,
         type: data.type || f.type,
+        year: data.year ? String(data.year) : f.year,
         service: data.service || f.service,
         genres: data.genres ? data.genres.join(", ") : f.genres,
         cast: data.cast ? data.cast.join(", ") : f.cast,
@@ -110,7 +145,7 @@ export default function Home() {
         rtLink: data.rtLink || f.rtLink,
       }));
       // fetch backdrop in parallel, non-blocking
-      callApi("/api/backdrop", { title, type: data.type || "TV Show" }, true)
+      callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
         .then((b) => setPendingBackdrop(b.backdropUrl || null))
         .catch(() => {});
       setAiStatus("");
@@ -161,6 +196,7 @@ export default function Home() {
 
   // ---------- Form open/close ----------
   function openAdd() {
+    setCandidates([]);
     setEditingId(null);
     setForm(EMPTY_FORM);
     setTags([]);
@@ -172,9 +208,10 @@ export default function Home() {
     setSheetOpen(true);
   }
   function openEdit(entry) {
+    setCandidates([]);
     setEditingId(entry.id);
     setForm({
-      title: entry.title, type: entry.type, service: entry.service || "",
+      title: entry.title, type: entry.type, year: entry.year || "", service: entry.service || "",
       genres: (entry.genres || []).join(", "), cast: entry.cast || "",
       rtScore: entry.rtScore ?? "", rtLink: entry.rtLink || "",
       episode: entry.episode || "", notes: entry.notes || "",
@@ -187,7 +224,7 @@ export default function Home() {
     setAiStatus("");
     setSheetOpen(true);
   }
-  function closeSheet() { setSheetOpen(false); }
+  function closeSheet() { setSheetOpen(false); setCandidates([]); }
 
   function prefillFromRelated(title, type) {
     setEditingId(null);
@@ -204,6 +241,7 @@ export default function Home() {
     const payload = {
       title: form.title.trim(),
       type: form.type,
+      year: form.year.trim(),
       service: form.service.trim(),
       genres,
       cast: form.cast.trim(),
@@ -220,7 +258,7 @@ export default function Home() {
       if (editingId) {
         await updateDoc(doc(db, "entries", editingId), payload);
       } else {
-        await addDoc(collection(db, "entries"), { ...payload, related: [] });
+        await addDoc(collection(db, "entries"), { ...payload, related: [], createdAt: Date.now() });
       }
       setSyncStatus("Synced across devices");
       setCurrentTab(status);
@@ -252,6 +290,11 @@ export default function Home() {
   if (filterService) filtered = filtered.filter((e) => e.service === filterService);
   if (filterGenre) filtered = filtered.filter((e) => (e.genres || []).includes(filterGenre));
   if (activeTags.length) filtered = filtered.filter((e) => activeTags.every((t) => (e.tags || []).includes(t)));
+
+  filtered = [...filtered].sort((a, b) => {
+    if (sortBy === "recent") return (b.createdAt || 0) - (a.createdAt || 0);
+    return (a.title || "").localeCompare(b.title || "");
+  });
 
   function toggleTagFilter(t) {
     setActiveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
@@ -333,6 +376,10 @@ export default function Home() {
       </div>
 
       <div className="filters">
+        <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          <option value="alpha">Sort: A–Z</option>
+          <option value="recent">Sort: Recently added</option>
+        </select>
         <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
           <option value="">Any service</option>
           {services.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -418,15 +465,40 @@ export default function Home() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && form.title.trim()) {
                       e.preventDefault();
-                      runEnrichment(form.title.trim());
+                      startLookup(form.title.trim());
                     }
                   }}
                   placeholder="e.g. Desperate Housewives" />
                 <button type="button" className="btn-mini primary" style={{ flexShrink: 0 }}
-                  onClick={() => form.title.trim() && runEnrichment(form.title.trim())}>
+                  onClick={() => form.title.trim() && startLookup(form.title.trim())}>
                   Look up
                 </button>
               </div>
+
+              {candidates.length > 0 && (
+                <div className="candidate-picker">
+                  <div className="candidate-picker-label">More than one match — which one?</div>
+                  {candidates.map((c) => (
+                    <div key={c.id} className="candidate-row" onClick={() => pickCandidate(c)}>
+                      {c.posterUrl ? (
+                        <img src={c.posterUrl} alt="" className="candidate-poster" />
+                      ) : (
+                        <div className="candidate-poster candidate-poster-fallback">🎬</div>
+                      )}
+                      <div>
+                        <div className="candidate-title">{c.title}</div>
+                        <div className="candidate-sub">{c.type}{c.year ? " · " + c.year : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="candidate-dismiss" onClick={() => { setCandidates([]); runEnrichment(form.title.trim()); }}>
+                    None of these — search anyway
+                  </div>
+                </div>
+              )}
+
+              <label>Year (helps when the title is shared by more than one show/movie)</label>
+              <input type="text" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="e.g. 1991" />
 
               {aiStatus && <div className="status-line"><div className="spinner"></div><span>{aiStatus}</span></div>}
 
@@ -551,7 +623,7 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           <div>
             <p className="card-title">{e.title}</p>
             <p className="card-sub">
-              {e.type}{e.cast ? " · " + e.cast : ""}
+              {e.type}{e.year ? " (" + e.year + ")" : ""}{e.cast ? " · " + e.cast : ""}
               {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : "var(--text-muted)" }}>
                 {e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
               </span>
