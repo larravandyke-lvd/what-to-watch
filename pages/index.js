@@ -46,6 +46,28 @@ export default function Home() {
     return () => unsub();
   }, []);
 
+  // Listen for clipboard paste (e.g. Cmd+V / Ctrl+V of a screenshot) while the sheet is open
+  useEffect(() => {
+    if (!sheetOpen) return;
+    function handlePaste(e) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type && item.type.startsWith("image/")) {
+          const blob = item.getAsFile();
+          if (blob) {
+            e.preventDefault();
+            setMethod("paste");
+            analyzePhoto(blob);
+          }
+          break;
+        }
+      }
+    }
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [sheetOpen]);
+
   // ---------- Helpers ----------
   async function callApi(path, body, isGet) {
     const res = await fetch(path + (isGet ? "?" + new URLSearchParams(body) : ""), {
@@ -306,7 +328,7 @@ export default function Home() {
               <h2>{editingId ? "Edit" : "Add something"}</h2>
 
               <div className="method-row">
-                {[["type", "⌨", "Type it"], ["photo", "📷", "Photo of TV"], ["upload", "🖼", "Screenshot"]].map(([m, ic, label]) => (
+                {[["type", "⌨", "Type it"], ["photo", "📷", "Photo of TV"], ["upload", "🖼", "Screenshot"], ["paste", "📋", "Paste image"]].map(([m, ic, label]) => (
                   <div key={m} className={`method-btn ${method === m ? "active" : ""}`}
                     onClick={() => {
                       setMethod(m);
@@ -317,6 +339,11 @@ export default function Home() {
                   </div>
                 ))}
               </div>
+              {method === "paste" && (
+                <div className="status-line" style={{ color: "var(--text-muted)" }}>
+                  Copy a screenshot, then press ⌘V (Mac) or Ctrl+V (Windows) anywhere on this screen.
+                </div>
+              )}
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
                 onChange={(e) => e.target.files[0] && analyzePhoto(e.target.files[0])} />
               <input ref={uploadRef} type="file" accept="image/*" style={{ display: "none" }}

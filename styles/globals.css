@@ -146,8 +146,8 @@ input[type=text], textarea, select.full{
 }
 textarea{ resize:vertical; min-height:50px; }
 
-.method-row{ display:flex; gap:8px; margin-bottom:6px; }
-.method-btn{ flex:1; padding:14px 8px; border-radius:10px; border:1px solid var(--line); background:var(--surface-raised); color:var(--text); font-size:12px; text-align:center; cursor:pointer; font-family:inherit; }
+.method-row{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
+.method-btn{ flex:1 1 calc(50% - 4px); min-width:110px; padding:14px 8px; border-radius:10px; border:1px solid var(--line); background:var(--surface-raised); color:var(--text); font-size:12px; text-align:center; cursor:pointer; font-family:inherit; }
 .method-btn .ic{ font-size:20px; display:block; margin-bottom:4px; }
 .method-btn.active{ border-color:var(--gold); color:var(--gold); }
 
