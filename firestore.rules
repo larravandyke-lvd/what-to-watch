@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // No login system on this app — anyone with the site URL can read/write.
+    // That's fine for a private household list, but don't post the URL publicly.
+    match /entries/{entryId} {
+      allow read, write: if true;
+    }
+  }
+}

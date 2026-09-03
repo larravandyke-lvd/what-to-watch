@@ -1,0 +1,464 @@
+import { useEffect, useState, useRef } from "react";
+import {
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
+} from "firebase/firestore";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { db, storage } from "../lib/firebase";
+
+const EMPTY_FORM = {
+  title: "", type: "TV Show", service: "", genres: "", cast: "",
+  rtScore: "", rtLink: "", episode: "", notes: "",
+};
+
+export default function Home() {
+  const [entries, setEntries] = useState([]);
+  const [currentTab, setCurrentTab] = useState("want");
+  const [viewMode, setViewMode] = useState("flat"); // flat | genre | service
+  const [filterService, setFilterService] = useState("");
+  const [filterGenre, setFilterGenre] = useState("");
+  const [activeTags, setActiveTags] = useState([]);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [tags, setTags] = useState([]);
+  const [status, setStatus] = useState("want");
+  const [method, setMethod] = useState("type");
+  const [thumbPreview, setThumbPreview] = useState(null);
+  const [pendingBackdrop, setPendingBackdrop] = useState(null);
+  const [aiStatus, setAiStatus] = useState("");
+  const [syncStatus, setSyncStatus] = useState("Connecting…");
+  const cameraRef = useRef(null);
+  const uploadRef = useRef(null);
+
+  // ---------- Realtime sync ----------
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, "entries"),
+      (snap) => {
+        setEntries(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setSyncStatus("Synced across devices");
+      },
+      (err) => {
+        console.error(err);
+        setSyncStatus("Couldn't connect to the shared list — check your connection");
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  // ---------- Helpers ----------
+  async function callApi(path, body, isGet) {
+    const res = await fetch(path + (isGet ? "?" + new URLSearchParams(body) : ""), {
+      method: isGet ? "GET" : "POST",
+      headers: isGet ? {} : { "Content-Type": "application/json" },
+      body: isGet ? undefined : JSON.stringify(body),
+    });
+    return res.json();
+  }
+
+  async function runEnrichment(title) {
+    setAiStatus("Looking up details…");
+    try {
+      const data = await callApi("/api/enrich", { title });
+      setForm((f) => ({
+        ...f,
+        type: data.type || f.type,
+        service: data.service || f.service,
+        genres: data.genres ? data.genres.join(", ") : f.genres,
+        cast: data.cast ? data.cast.join(", ") : f.cast,
+        rtScore: data.rtScore ?? f.rtScore,
+        rtLink: data.rtLink || f.rtLink,
+      }));
+      // fetch backdrop in parallel, non-blocking
+      callApi("/api/backdrop", { title, type: data.type || "TV Show" }, true)
+        .then((b) => setPendingBackdrop(b.backdropUrl || null))
+        .catch(() => {});
+      setAiStatus("");
+    } catch (e) {
+      setAiStatus("Couldn't look that up — fill in manually");
+    }
+  }
+
+  async function analyzePhoto(file) {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result;
+      const base64 = dataUrl.split(",")[1];
+      const mediaType = file.type || "image/jpeg";
+      setThumbPreview(dataUrl);
+      setAiStatus("Reading the screen…");
+      try {
+        const result = await callApi("/api/analyze-image", { base64, mediaType });
+        if (result && result.title) {
+          setForm((f) => ({
+            ...f,
+            title: result.title,
+            episode: result.episode && result.episode !== "null" ? result.episode : f.episode,
+            service: result.service && result.service !== "null" ? result.service : f.service,
+          }));
+          if (result.episode && result.episode !== "null") {
+            setStatus("watching");
+          }
+          await runEnrichment(result.title);
+        } else {
+          setAiStatus("Couldn't read the image — type the title instead");
+        }
+      } catch (e) {
+        setAiStatus("Couldn't read the image — type the title instead");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function findRelated(entry) {
+    try {
+      const arr = await callApi("/api/related", { title: entry.title, genres: entry.genres || [] });
+      await updateDoc(doc(db, "entries", entry.id), { related: arr });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // ---------- Form open/close ----------
+  function openAdd() {
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setTags([]);
+    setStatus("want");
+    setMethod("type");
+    setThumbPreview(null);
+    setPendingBackdrop(null);
+    setAiStatus("");
+    setSheetOpen(true);
+  }
+  function openEdit(entry) {
+    setEditingId(entry.id);
+    setForm({
+      title: entry.title, type: entry.type, service: entry.service || "",
+      genres: (entry.genres || []).join(", "), cast: entry.cast || "",
+      rtScore: entry.rtScore ?? "", rtLink: entry.rtLink || "",
+      episode: entry.episode || "", notes: entry.notes || "",
+    });
+    setTags(entry.tags || []);
+    setStatus(entry.status);
+    setMethod("type");
+    setThumbPreview(entry.backdropUrl || null);
+    setPendingBackdrop(entry.backdropUrl || null);
+    setAiStatus("");
+    setSheetOpen(true);
+  }
+  function closeSheet() { setSheetOpen(false); }
+
+  function prefillFromRelated(title, type) {
+    setEditingId(null);
+    setForm({ ...EMPTY_FORM, title, type: type || "TV Show" });
+    setTags([]); setStatus("want"); setMethod("type");
+    setThumbPreview(null); setPendingBackdrop(null);
+    setSheetOpen(true);
+    runEnrichment(title);
+  }
+
+  async function handleSave() {
+    if (!form.title.trim()) return;
+    const genres = form.genres.split(",").map((s) => s.trim()).filter(Boolean);
+    const payload = {
+      title: form.title.trim(),
+      type: form.type,
+      service: form.service.trim(),
+      genres,
+      cast: form.cast.trim(),
+      rtScore: form.rtScore === "" ? null : Number(form.rtScore),
+      rtLink: form.rtLink.trim(),
+      episode: form.episode.trim(),
+      notes: form.notes.trim(),
+      tags,
+      status,
+      backdropUrl: pendingBackdrop || null,
+    };
+    setSyncStatus("Saving…");
+    try {
+      if (editingId) {
+        await updateDoc(doc(db, "entries", editingId), payload);
+      } else {
+        await addDoc(collection(db, "entries"), { ...payload, related: [] });
+      }
+      setSyncStatus("Synced across devices");
+      setCurrentTab(status);
+      closeSheet();
+    } catch (e) {
+      console.error(e);
+      setSyncStatus("Couldn't save — try again");
+    }
+  }
+
+  async function moveStatus(id, newStatus) {
+    try { await updateDoc(doc(db, "entries", id), { status: newStatus }); }
+    catch (e) { console.error(e); }
+  }
+  async function removeEntry(id) {
+    try { await deleteDoc(doc(db, "entries", id)); }
+    catch (e) { console.error(e); }
+  }
+  async function updateEpisode(id, val) {
+    try { await updateDoc(doc(db, "entries", id), { episode: val }); }
+    catch (e) { console.error(e); }
+  }
+
+  // ---------- Derived data ----------
+  const services = [...new Set(entries.map((e) => e.service).filter(Boolean))].sort();
+  const allGenres = [...new Set(entries.flatMap((e) => e.genres || []))].sort();
+
+  let filtered = entries.filter((e) => e.status === currentTab);
+  if (filterService) filtered = filtered.filter((e) => e.service === filterService);
+  if (filterGenre) filtered = filtered.filter((e) => (e.genres || []).includes(filterGenre));
+  if (activeTags.length) filtered = filtered.filter((e) => activeTags.every((t) => (e.tags || []).includes(t)));
+
+  function toggleTagFilter(t) {
+    setActiveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
+
+  function groupBy(field) {
+    const groups = {};
+    filtered.forEach((e) => {
+      const keys = field === "genres" ? (e.genres && e.genres.length ? e.genres : ["Uncategorized"]) : [e.service || "Unlisted"];
+      keys.forEach((k) => {
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(e);
+      });
+    });
+    return Object.keys(groups).sort().map((k) => ({ key: k, items: groups[k] }));
+  }
+
+  return (
+    <>
+      <header>
+        <h1 className="marquee-font">WHAT TO WATCH</h1>
+        <p>Snap it, type it, never lose it again.</p>
+        <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
+      </header>
+
+      <div className="tabs">
+        {["want", "watching", "watched"].map((s) => (
+          <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
+            {s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+            <span className="count">({entries.filter((e) => e.status === s).length})</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="view-toggle">
+        <div className={`vbtn ${viewMode === "flat" ? "active" : ""}`} onClick={() => setViewMode("flat")}>All</div>
+        <div className={`vbtn ${viewMode === "genre" ? "active" : ""}`} onClick={() => setViewMode("genre")}>By Genre</div>
+        <div className={`vbtn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
+      </div>
+
+      <div className="filters">
+        <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
+          <option value="">Any service</option>
+          {services.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select className="chip" value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
+          <option value="">Any genre</option>
+          {allGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        {["Larra", "Eric", "Family"].map((t) => (
+          <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
+        ))}
+      </div>
+
+      {viewMode === "flat" && (
+        <div className="list">
+          {filtered.length === 0 ? <EmptyState tab={currentTab} /> :
+            filtered.map((e) => (
+              <Card key={e.id} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
+                onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated} />
+            ))}
+        </div>
+      )}
+
+      {viewMode !== "flat" && (
+        <div className="list">
+          {filtered.length === 0 ? <EmptyState tab={currentTab} /> :
+            groupBy(viewMode === "genre" ? "genres" : "service").map((group) => (
+              <div key={group.key}>
+                <div className="shelf-heading">{group.key}</div>
+                {group.items.map((e) => (
+                  <Card key={e.id + group.key} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
+                    onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated} />
+                ))}
+              </div>
+            ))}
+        </div>
+      )}
+
+      <button className="fab" onClick={openAdd}>+</button>
+
+      {sheetOpen && (
+        <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) closeSheet(); }}>
+          <div className="sheet">
+            {(thumbPreview || pendingBackdrop) && (
+              <img className="sheet-hero" src={thumbPreview || pendingBackdrop} alt="" />
+            )}
+            <div className="sheet-inner">
+              <button className="sheet-close" onClick={closeSheet}>✕</button>
+              <h2>{editingId ? "Edit" : "Add something"}</h2>
+
+              <div className="method-row">
+                {[["type", "⌨", "Type it"], ["photo", "📷", "Photo of TV"], ["upload", "🖼", "Screenshot"]].map(([m, ic, label]) => (
+                  <div key={m} className={`method-btn ${method === m ? "active" : ""}`}
+                    onClick={() => {
+                      setMethod(m);
+                      if (m === "photo") cameraRef.current?.click();
+                      if (m === "upload") uploadRef.current?.click();
+                    }}>
+                    <span className="ic">{ic}</span>{label}
+                  </div>
+                ))}
+              </div>
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                onChange={(e) => e.target.files[0] && analyzePhoto(e.target.files[0])} />
+              <input ref={uploadRef} type="file" accept="image/*" style={{ display: "none" }}
+                onChange={(e) => e.target.files[0] && analyzePhoto(e.target.files[0])} />
+
+              <label>Title</label>
+              <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
+                onBlur={() => { if (form.title.trim() && method === "type" && !form.genres) runEnrichment(form.title.trim()); }}
+                placeholder="e.g. Desperate Housewives" />
+
+              {aiStatus && <div className="status-line"><div className="spinner"></div><span>{aiStatus}</span></div>}
+
+              <label>Type</label>
+              <select className="full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                <option value="Movie">Movie</option>
+                <option value="TV Show">TV Show</option>
+              </select>
+
+              <label>Streaming service / network</label>
+              <input type="text" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Hulu, Netflix, ABC" />
+
+              <label>Genres (comma separated)</label>
+              <input type="text" value={form.genres} onChange={(e) => setForm({ ...form, genres: e.target.value })} placeholder="e.g. Drama, Mystery, Dark Comedy" />
+
+              <label>Top cast</label>
+              <input type="text" value={form.cast} onChange={(e) => setForm({ ...form, cast: e.target.value })} placeholder="e.g. Teri Hatcher, Felicity Huffman" />
+
+              <label>Rotten Tomatoes score (%)</label>
+              <input type="text" value={form.rtScore} onChange={(e) => setForm({ ...form, rtScore: e.target.value })} placeholder="e.g. 81" />
+
+              <label>Link to reviews</label>
+              <input type="text" value={form.rtLink} onChange={(e) => setForm({ ...form, rtLink: e.target.value })} placeholder="https://..." />
+
+              <label>Who's it for</label>
+              <div className="multichip-row">
+                {["Larra", "Eric", "Family"].map((t) => (
+                  <div key={t} className={`multichip ${tags.includes(t) ? "on" : ""}`}
+                    onClick={() => setTags((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}>{t}</div>
+                ))}
+              </div>
+
+              <label>Status</label>
+              <div className="multichip-row">
+                {[["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
+                  <div key={s} className={`multichip ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{label}</div>
+                ))}
+              </div>
+
+              {(status === "watching" || status === "watched") && form.type === "TV Show" && (
+                <>
+                  <label>Where you left off (e.g. Season 3, Ep 7)</label>
+                  <input type="text" value={form.episode} onChange={(e) => setForm({ ...form, episode: e.target.value })} placeholder="Season 3, Episode 7" />
+                </>
+              )}
+
+              <label>Notes</label>
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Anything worth remembering..." />
+
+              <div className="sheet-actions">
+                <button className="btn-full ghost" onClick={closeSheet}>Cancel</button>
+                <button className="btn-full primary" onClick={handleSave}>Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function EmptyState({ tab }) {
+  const msg = {
+    want: "Nothing on the list yet. Tap + to add the next thing you hear about.",
+    watching: "Nothing in progress. Move something here once you start it.",
+    watched: "Nothing watched yet — your history will collect here.",
+  };
+  return <div className="empty"><div className="big">Empty for now</div>{msg[tab]}</div>;
+}
+
+function rtClass(score) {
+  if (score === null || score === undefined || score === "") return "";
+  return Number(score) >= 60 ? "rt-fresh" : "rt-rotten";
+}
+
+function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated }) {
+  const [epVal, setEpVal] = useState(e.episode || "");
+  useEffect(() => setEpVal(e.episode || ""), [e.episode]);
+
+  return (
+    <div className={`card ${e.status}`}>
+      {e.backdropUrl && (
+        <div className="card-backdrop-wrap">
+          <img className="card-backdrop" src={e.backdropUrl} alt="" />
+          <div className="card-backdrop-fade"></div>
+        </div>
+      )}
+      <div className="card-body">
+        <div className="card-top">
+          <div>
+            <p className="card-title">{e.title}</p>
+            <p className="card-sub">{e.type}{e.cast ? " · " + e.cast : ""}</p>
+          </div>
+          {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
+            <a className="rt-badge" href={e.rtLink || "#"} target="_blank" rel="noopener noreferrer">
+              <span className={rtClass(e.rtScore)}>🍅</span>{e.rtScore}%
+            </a>
+          )}
+        </div>
+        <div className="chips-row">
+          {e.service && <span className="tagchip">{e.service}</span>}
+          {(e.genres || []).map((g) => <span key={g} className="tagchip">{g}</span>)}
+          {(e.tags || []).map((t) => <span key={t} className="tagchip person">{t}</span>)}
+        </div>
+
+        {e.status === "watching" && e.type === "TV Show" ? (
+          <div className="progress-row">📍
+            <input type="text" value={epVal} onChange={(ev) => setEpVal(ev.target.value)}
+              onBlur={() => onEpisode(e.id, epVal)} placeholder="Season / episode" />
+          </div>
+        ) : e.episode ? (
+          <div className="progress-row">📍 Stopped at {e.episode}</div>
+        ) : null}
+
+        {e.related && e.related.length > 0 && (
+          <div className="related-box">
+            <div className="lbl">Because you liked this</div>
+            {e.related.map((r) => (
+              <span key={r.title} className="related-item" onClick={() => onPickRelated(r.title, r.type)}>{r.title}</span>
+            ))}
+          </div>
+        )}
+
+        <div className="card-actions">
+          {e.status === "want" && <button className="btn-mini primary" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
+          {e.status === "watching" && <>
+            <button className="btn-mini primary" onClick={() => onMove(e.id, "watched")}>Mark watched</button>
+            <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Back to list</button>
+          </>}
+          {e.status === "watched" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Watch again</button>}
+          <button className="btn-mini" onClick={() => onRelated(e)}>Find similar</button>
+          <button className="btn-mini" onClick={() => onEdit(e)}>Edit</button>
+          <button className="btn-mini" onClick={() => onDelete(e.id)}>Remove</button>
+        </div>
+      </div>
+    </div>
+  );
+}
