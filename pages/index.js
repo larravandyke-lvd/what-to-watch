@@ -12,7 +12,7 @@ const EMPTY_FORM = {
 
 export default function Home() {
   const [entries, setEntries] = useState([]);
-  const [currentTab, setCurrentTab] = useState("want");
+  const [currentTab, setCurrentTab] = useState("all");
   const [viewMode, setViewMode] = useState("flat"); // flat | genre | service
   const [layout, setLayout] = useState("tiles"); // tiles | list
   const [filterService, setFilterService] = useState("");
