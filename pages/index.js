@@ -287,8 +287,8 @@ export default function Home() {
       </header>
 
       <div style={{ padding: "16px 16px 0" }}>
-        <button className="btn-full primary" onClick={openAdd} style={{ width: "100%" }}>
-          + Add something new
+        <button className="add-pill" onClick={openAdd}>
+          <span style={{ fontSize: "16px" }}>➕</span> Add something
         </button>
       </div>
 
