@@ -307,7 +307,13 @@ export default function Home() {
     try {
       const data = await callApi("/api/enrich", { title, year: year || "" });
       setQuickResult({ title, ...data });
-      setQuickStatus("");
+      if (data.error) {
+        setQuickStatus("ERROR (temporary debug): " + data.error);
+      } else if (data.debug) {
+        setQuickStatus("DEBUG (temporary): " + data.debug);
+      } else {
+        setQuickStatus("");
+      }
       if (data.service) {
         callApi("/api/provider-logo", { service: data.service }, true)
           .then((d) => setQuickLogo(d.logoUrl || null))
@@ -316,7 +322,7 @@ export default function Home() {
         setQuickLogo(null);
       }
     } catch (e) {
-      setQuickStatus("Couldn't look that up.");
+      setQuickStatus("Couldn't look that up: " + e.message);
     }
   }
 
