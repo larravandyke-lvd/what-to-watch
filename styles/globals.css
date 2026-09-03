@@ -134,9 +134,9 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
   position:absolute; top:8px; left:8px; z-index:3; width:9px; height:9px; border-radius:50%;
   box-shadow:0 0 0 2px rgba(20,23,31,0.6);
 }
-.tile-service-logo{
+.tile-media img.tile-service-logo{
   position:absolute; bottom:7px; left:7px; z-index:3;
-  height:28px; max-width:76px; object-fit:contain;
+  width:auto; height:28px; max-width:76px; object-fit:contain;
   background:#fff; border-radius:6px; padding:3px 6px;
   box-shadow:0 2px 8px rgba(0,0,0,0.35);
 }
