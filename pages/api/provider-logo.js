@@ -22,23 +22,55 @@ async function getProviderList() {
   return cachedProviders;
 }
 
-function normalize(str) {
-  return (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// Break a name into lowercase word tokens so "Max (HBO)" and "HBO Max" compare
+// the same regardless of word order or punctuation.
+function tokenize(str) {
+  return (str || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
 }
 
-// Common aliases so free-text service names (typed by a person or guessed by AI)
-// still match TMDB's official provider names.
-const ALIASES = {
-  hbo: "max",
-  hbomax: "max",
-  prime: "amazonprimevideo",
-  amazon: "amazonprimevideo",
-  amazonprime: "amazonprimevideo",
-  disney: "disneyplus",
-  apple: "appletvplus",
-  appletv: "appletvplus",
-  paramount: "paramountplus",
+// Some names refer to the same service under different branding —
+// expand tokens so either side of a rebrand still matches.
+const EXPAND = {
+  hbo: ["max"],
+  max: ["hbo"],
+  prime: ["amazon"],
+  amazon: ["prime"],
 };
+
+function expandTokens(tokens) {
+  const set = new Set(tokens);
+  tokens.forEach((t) => {
+    (EXPAND[t] || []).forEach((x) => set.add(x));
+  });
+  return set;
+}
+
+function findBestMatch(providers, serviceName) {
+  const queryTokens = expandTokens(tokenize(serviceName));
+  const queryFull = tokenize(serviceName).join(" ");
+  let best = null;
+  let bestScore = 0;
+
+  providers.forEach((p) => {
+    const pTokens = tokenize(p.provider_name);
+    let score = 0;
+    pTokens.forEach((t) => {
+      if (queryTokens.has(t)) score++;
+    });
+    if (pTokens.join(" ") === queryFull) score += 10; // exact full-name match wins outright
+    if (score > bestScore) {
+      bestScore = score;
+      best = p;
+    }
+  });
+
+  return bestScore > 0 ? best : null;
+}
 
 export default async function handler(req, res) {
   const { service } = req.query;
@@ -47,17 +79,7 @@ export default async function handler(req, res) {
 
   try {
     const providers = await getProviderList();
-    let query = normalize(service);
-    query = ALIASES[query] || query;
-
-    let match = providers.find((p) => normalize(p.provider_name) === query);
-    if (!match) {
-      match = providers.find((p) => {
-        const n = normalize(p.provider_name);
-        return n.includes(query) || query.includes(n);
-      });
-    }
-
+    const match = findBestMatch(providers, service);
     if (!match || !match.logo_path) return res.status(200).json({ logoUrl: null });
     res.status(200).json({ logoUrl: `https://image.tmdb.org/t/p/w92${match.logo_path}` });
   } catch (e) {
