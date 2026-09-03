@@ -208,7 +208,7 @@ export default function Home() {
   const services = [...new Set(entries.map((e) => e.service).filter(Boolean))].sort();
   const allGenres = [...new Set(entries.flatMap((e) => e.genres || []))].sort();
 
-  let filtered = entries.filter((e) => e.status === currentTab);
+  let filtered = currentTab === "all" ? [...entries] : entries.filter((e) => e.status === currentTab);
   if (filterService) filtered = filtered.filter((e) => e.service === filterService);
   if (filterGenre) filtered = filtered.filter((e) => (e.genres || []).includes(filterGenre));
   if (activeTags.length) filtered = filtered.filter((e) => activeTags.every((t) => (e.tags || []).includes(t)));
@@ -238,10 +238,12 @@ export default function Home() {
       </header>
 
       <div className="tabs">
-        {["want", "watching", "watched"].map((s) => (
+        {["all", "want", "watching", "watched"].map((s) => (
           <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
-            {s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
-            <span className="count">({entries.filter((e) => e.status === s).length})</span>
+            {s === "all" ? "All" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+            <span className="count">
+              ({s === "all" ? entries.length : entries.filter((e) => e.status === s).length})
+            </span>
           </div>
         ))}
       </div>
@@ -321,9 +323,21 @@ export default function Home() {
                 onChange={(e) => e.target.files[0] && analyzePhoto(e.target.files[0])} />
 
               <label>Title</label>
-              <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })}
-                onBlur={() => { if (form.title.trim() && method === "type" && !form.genres) runEnrichment(form.title.trim()); }}
-                placeholder="e.g. Desperate Housewives" />
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input type="text" value={form.title} style={{ flex: 1 }}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && form.title.trim()) {
+                      e.preventDefault();
+                      runEnrichment(form.title.trim());
+                    }
+                  }}
+                  placeholder="e.g. Desperate Housewives" />
+                <button type="button" className="btn-mini primary" style={{ flexShrink: 0 }}
+                  onClick={() => form.title.trim() && runEnrichment(form.title.trim())}>
+                  Look up
+                </button>
+              </div>
 
               {aiStatus && <div className="status-line"><div className="spinner"></div><span>{aiStatus}</span></div>}
 
@@ -415,7 +429,12 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
         <div className="card-top">
           <div>
             <p className="card-title">{e.title}</p>
-            <p className="card-sub">{e.type}{e.cast ? " · " + e.cast : ""}</p>
+            <p className="card-sub">
+              {e.type}{e.cast ? " · " + e.cast : ""}
+              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : "var(--text-muted)" }}>
+                {e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
+              </span>
+            </p>
           </div>
           {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
             <a className="rt-badge" href={e.rtLink || "#"} target="_blank" rel="noopener noreferrer">
