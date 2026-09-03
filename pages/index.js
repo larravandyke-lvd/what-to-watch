@@ -430,6 +430,13 @@ export default function Home() {
 
               {aiStatus && <div className="status-line"><div className="spinner"></div><span>{aiStatus}</span></div>}
 
+              <label>Status</label>
+              <div className="multichip-row">
+                {[["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
+                  <div key={s} className={`multichip ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{label}</div>
+                ))}
+              </div>
+
               <label>Type</label>
               <select className="full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
                 <option value="Movie">Movie</option>
@@ -456,13 +463,6 @@ export default function Home() {
                 {["Larra", "Eric", "Family"].map((t) => (
                   <div key={t} className={`multichip ${tags.includes(t) ? "on" : ""}`}
                     onClick={() => setTags((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}>{t}</div>
-                ))}
-              </div>
-
-              <label>Status</label>
-              <div className="multichip-row">
-                {[["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
-                  <div key={s} className={`multichip ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{label}</div>
                 ))}
               </div>
 
