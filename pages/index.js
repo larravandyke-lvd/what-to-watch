@@ -490,6 +490,10 @@ export default function Home() {
 
   async function handleSave() {
     if (!form.title.trim()) return;
+    if (tags.length === 0) {
+      window.alert("Who's it for? Pick at least one — Larra, Eric, Maddie, or Family — before saving.");
+      return;
+    }
     if (!editingId) {
       const dupKey = normKey(form.title, form.type);
       const dup = visibleEntries.find((e) => normKey(e.title, e.type) === dupKey);
@@ -563,7 +567,12 @@ export default function Home() {
   let filtered = currentTab === "all" ? [...visibleEntries] : visibleEntries.filter((e) => e.status === currentTab);
   if (filterService) filtered = filtered.filter((e) => e.service === filterService);
   if (filterGenre) filtered = filtered.filter((e) => (e.genres || []).includes(filterGenre));
-  if (activeTags.length) filtered = filtered.filter((e) => activeTags.every((t) => (e.tags || []).includes(t)));
+  if (activeTags.length) {
+    filtered = filtered.filter((e) => {
+      const eTags = e.tags || [];
+      return activeTags.every((t) => eTags.includes(t) || eTags.includes("Family"));
+    });
+  }
   if (searchQuery.trim()) {
     const q = searchQuery.trim().toLowerCase();
     filtered = filtered.filter((e) => {
