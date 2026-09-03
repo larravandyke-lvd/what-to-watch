@@ -44,6 +44,8 @@ export default function Home() {
   const [untaggedQueue, setUntaggedQueue] = useState([]);
   const [untaggedIndex, setUntaggedIndex] = useState(0);
   const [wizardTags, setWizardTags] = useState([]);
+  const [navList, setNavList] = useState(null);
+  const [navIndex, setNavIndex] = useState(0);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -496,9 +498,10 @@ export default function Home() {
     setThumbPreview(null);
     setPendingBackdrop(null);
     setAiStatus("");
+    setNavList(null);
     setSheetOpen(true);
   }
-  function openEdit(entry) {
+  function openEdit(entry, navContext) {
     setCandidates([]);
     setShowLinkInput(false);
     setEditingId(entry.id);
@@ -514,15 +517,27 @@ export default function Home() {
     setThumbPreview(entry.backdropUrl || null);
     setPendingBackdrop(entry.backdropUrl || null);
     setAiStatus("");
+    if (navContext) {
+      setNavList(navContext.list);
+      setNavIndex(navContext.index);
+    } else {
+      setNavList(null);
+    }
     setSheetOpen(true);
   }
-  function closeSheet() { setSheetOpen(false); setCandidates([]); }
+  function goToNavIndex(newIndex) {
+    if (!navList || newIndex < 0 || newIndex >= navList.length) return;
+    const nextEntry = entries.find((e) => e.id === navList[newIndex]);
+    if (nextEntry) openEdit(nextEntry, { list: navList, index: newIndex });
+  }
+  function closeSheet() { setSheetOpen(false); setCandidates([]); setNavList(null); }
 
   function prefillFromRelated(title, type) {
     setEditingId(null);
     setForm({ ...EMPTY_FORM, title, type: type || "TV Show" });
     setTags([]); setStatus("want"); setMethod("type");
     setThumbPreview(null); setPendingBackdrop(null);
+    setNavList(null);
     setSheetOpen(true);
     runEnrichment(title);
   }
@@ -656,17 +671,20 @@ export default function Home() {
   const editingEntry = editingId ? entries.find((x) => x.id === editingId) : null;
 
   function renderItems(items) {
+    const idList = items.map((e) => e.id);
     if (layout === "tiles") {
       return (
         <div className="tile-grid">
-          {items.map((e) => <Tile key={e.id} e={e} onOpen={openEdit} logo={serviceLogos[e.service]} />)}
+          {items.map((e, i) => (
+            <Tile key={e.id} e={e} onOpen={() => openEdit(e, { list: idList, index: i })} logo={serviceLogos[e.service]} />
+          ))}
         </div>
       );
     }
     return (
       <div className="list">
-        {items.map((e) => (
-          <Card key={e.id} e={e} onEdit={openEdit} onDelete={archiveEntry} onMove={moveStatus}
+        {items.map((e, i) => (
+          <Card key={e.id} e={e} onEdit={() => openEdit(e, { list: idList, index: i })} onDelete={archiveEntry} onMove={moveStatus}
             onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated}
             logo={serviceLogos[e.service]} />
         ))}
@@ -1064,6 +1082,15 @@ export default function Home() {
               <h2>{editingId ? "Edit" : "Add something"}</h2>
               <button className="sheet-close" onClick={closeSheet}>✕ Close</button>
             </div>
+            {navList && (
+              <div className="nav-row">
+                <button className="btn-mini" disabled={navIndex === 0} style={{ opacity: navIndex === 0 ? 0.4 : 1 }}
+                  onClick={() => goToNavIndex(navIndex - 1)}>‹ Prior</button>
+                <span className="nav-count">{navIndex + 1} of {navList.length}</span>
+                <button className="btn-mini" disabled={navIndex >= navList.length - 1} style={{ opacity: navIndex >= navList.length - 1 ? 0.4 : 1 }}
+                  onClick={() => goToNavIndex(navIndex + 1)}>Next ›</button>
+              </div>
+            )}
             {(thumbPreview || pendingBackdrop) && (
               <img className="sheet-hero" src={thumbPreview || pendingBackdrop} alt="" />
             )}
