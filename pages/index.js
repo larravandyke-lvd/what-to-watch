@@ -38,6 +38,7 @@ export default function Home() {
   const [discoverFilter, setDiscoverFilter] = useState("movies"); // movies | shows
   const [dismissedIds, setDismissedIds] = useState([]);
   const [showDismissed, setShowDismissed] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -60,6 +61,15 @@ export default function Home() {
     function handlePageShow() { window.scrollTo(0, 0); }
     window.addEventListener("pageshow", handlePageShow);
     return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
+  // Show a floating "back to top" button once scrolled down a bit
+  useEffect(() => {
+    function handleScroll() {
+      setShowScrollTop(window.scrollY > 400);
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // ---------- Realtime sync ----------
@@ -802,6 +812,12 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {showScrollTop && (
+        <button className="scroll-top-btn" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} title="Back to top">
+          ↑
+        </button>
       )}
 
       {discoverOpen && (

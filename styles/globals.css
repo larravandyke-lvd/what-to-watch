@@ -50,6 +50,16 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 }
 .refresh-btn:hover{ color:var(--gold); border-color:var(--gold-dim); }
 
+.scroll-top-btn{
+  position:fixed; bottom:22px; right:20px; z-index:30;
+  width:46px; height:46px; border-radius:50%;
+  background:var(--surface-raised); border:1px solid var(--gold-dim); color:var(--gold);
+  font-size:20px; font-weight:700; cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,0.45);
+  display:flex; align-items:center; justify-content:center;
+}
+.scroll-top-btn:hover{ background:var(--surface); border-color:var(--gold); }
+
 .tabs{
   display:flex; flex-wrap:wrap;
   margin:18px 16px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
