@@ -386,15 +386,14 @@ export default function Home() {
       </div>
 
       <div className="mode-row">
-        <div className="mode-group">
-          <div className={`mode-btn ${viewMode === "flat" ? "active" : ""}`} onClick={() => setViewMode("flat")}>All</div>
-          <div className={`mode-btn ${viewMode === "genre" ? "active" : ""}`} onClick={() => setViewMode("genre")}>By Genre</div>
-          <div className={`mode-btn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
-        </div>
-        <div className="mode-group">
-          <div className={`mode-btn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
-          <div className={`mode-btn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
-        </div>
+        <div className={`mode-btn ${viewMode === "flat" ? "active" : ""}`} onClick={() => setViewMode("flat")}>All</div>
+        <div className={`mode-btn ${viewMode === "genre" ? "active" : ""}`} onClick={() => setViewMode("genre")}>By Genre</div>
+        <div className={`mode-btn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
+      </div>
+
+      <div className="mode-row mode-row-divided">
+        <div className={`mode-btn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
+        <div className={`mode-btn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
       </div>
 
       <div className="filters">
@@ -630,7 +629,10 @@ function Tile({ e, onOpen, logo }) {
       <div className="tile-media">
         <div className={`tile-status-dot ${e.status}`}></div>
         {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
-          <div className={`tile-rt ${rtClass(e.rtScore)}`}>🍅 {e.rtScore}%</div>
+          <a className={`tile-rt ${rtClass(e.rtScore)}`} href={e.rtLink || "#"} target="_blank" rel="noopener noreferrer"
+            onClick={(ev) => ev.stopPropagation()}>
+            🍅 {e.rtScore}% <span className="rt-link-icon">↗</span>
+          </a>
         )}
         {e.backdropUrl ? (
           <img src={e.backdropUrl} alt="" />
@@ -674,7 +676,7 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           </div>
           {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
             <a className="rt-badge" href={e.rtLink || "#"} target="_blank" rel="noopener noreferrer">
-              <span className={rtClass(e.rtScore)}>🍅</span>{e.rtScore}%
+              <span className={rtClass(e.rtScore)}>🍅</span>{e.rtScore}% <span className="rt-link-icon">↗</span>
             </a>
           )}
         </div>
