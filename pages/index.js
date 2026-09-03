@@ -1172,6 +1172,14 @@ export default function Home() {
                 ))}
               </div>
 
+              <label>Who's it for</label>
+              <div className="multichip-row">
+                {["Larra", "Eric", "Maddie", "Family"].map((t) => (
+                  <div key={t} className={`multichip ${tags.includes(t) ? "on" : ""}`}
+                    onClick={() => setTags((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}>{t}</div>
+                ))}
+              </div>
+
               <label>Type</label>
               <div className="select-wrap select-wrap-full">
                 <select className="full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
@@ -1209,14 +1217,6 @@ export default function Home() {
 
               <label>What it's about</label>
               <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="A short synopsis will fill in automatically after Look up." />
-
-              <label>Who's it for</label>
-              <div className="multichip-row">
-                {["Larra", "Eric", "Maddie", "Family"].map((t) => (
-                  <div key={t} className={`multichip ${tags.includes(t) ? "on" : ""}`}
-                    onClick={() => setTags((prev) => prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t])}>{t}</div>
-                ))}
-              </div>
 
               {(status === "watching" || status === "watched") && form.type === "TV Show" && (
                 <>
