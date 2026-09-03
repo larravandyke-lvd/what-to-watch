@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc,
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, arrayUnion,
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
@@ -36,6 +36,7 @@ export default function Home() {
   const [discoverData, setDiscoverData] = useState(null);
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverFilter, setDiscoverFilter] = useState("movies"); // movies | shows
+  const [dismissedIds, setDismissedIds] = useState([]);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -311,8 +312,47 @@ export default function Home() {
     setSheetOpen(true);
   }
 
+  function normKey(title, type) {
+    return `${(type || "").toLowerCase()}-${(title || "").trim().toLowerCase()}`;
+  }
+  function findExistingEntry(item) {
+    const key = normKey(item.title, item.type);
+    return visibleEntries.find((e) => normKey(e.title, e.type) === key) || null;
+  }
+  function handleDiscoverPick(item, presetStatus) {
+    const existing = findExistingEntry(item);
+    if (existing) {
+      setDiscoverOpen(false);
+      openEdit(existing);
+    } else {
+      quickAddFromDiscover(item, presetStatus);
+    }
+  }
+  function discoverKey(item) { return `${item.type}-${item.id}`; }
+  function filterDismissed(items) {
+    return (items || []).filter((i) => !dismissedIds.includes(discoverKey(i)));
+  }
+  async function loadDismissed() {
+    try {
+      const snap = await getDoc(doc(db, "meta", "discoverDismissed"));
+      setDismissedIds(snap.exists() ? (snap.data().ids || []) : []);
+    } catch (e) {
+      setDismissedIds([]);
+    }
+  }
+  async function dismissDiscoverItem(item) {
+    const key = discoverKey(item);
+    setDismissedIds((prev) => [...new Set([...prev, key])]);
+    try {
+      await setDoc(doc(db, "meta", "discoverDismissed"), { ids: arrayUnion(key) }, { merge: true });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   async function openDiscover() {
     setDiscoverOpen(true);
+    loadDismissed();
     if (discoverData) return;
     setDiscoverLoading(true);
     try {
@@ -384,6 +424,14 @@ export default function Home() {
 
   async function handleSave() {
     if (!form.title.trim()) return;
+    if (!editingId) {
+      const dupKey = normKey(form.title, form.type);
+      const dup = visibleEntries.find((e) => normKey(e.title, e.type) === dupKey);
+      if (dup) {
+        const proceed = window.confirm(`"${form.title.trim()}" is already on your list (${dup.status}). Add it again as a separate entry anyway?`);
+        if (!proceed) return;
+      }
+    }
     const genres = form.genres.split(",").map((s) => s.trim()).filter(Boolean);
     const payload = {
       title: form.title.trim(),
@@ -731,34 +779,39 @@ export default function Home() {
                 <div className="status-line"><div className="spinner"></div><span>Loading…</span></div>
               )}
               {discoverData && !discoverLoading && (() => {
-                const nowPlaying = discoverData.nowPlaying || [];
-                const upcoming = discoverData.upcoming || [];
-                const onTheAir = discoverData.onTheAir || [];
+                const nowPlaying = filterDismissed(discoverData.nowPlaying || []);
+                const upcoming = filterDismissed(discoverData.upcoming || []);
+                const onTheAir = filterDismissed(discoverData.onTheAir || []);
                 const trending = discoverData.trending || [];
-                const trendingMovies = trending.filter((x) => x.type === "Movie");
-                const trendingShows = trending.filter((x) => x.type === "TV Show");
+                const trendingMovies = filterDismissed(trending.filter((x) => x.type === "Movie"));
+                const trendingShows = filterDismissed(trending.filter((x) => x.type === "TV Show"));
                 return (
                   <>
                     {discoverFilter === "movies" ? (
                       <>
                         <DiscoverRow title="In Theaters Now" items={nowPlaying}
-                          onPick={(item) => quickAddFromDiscover(item, "theaters")} />
+                          onPick={(item) => handleDiscoverPick(item, "theaters")}
+                          onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Trending This Week" items={trendingMovies}
-                          onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                          onPick={(item) => handleDiscoverPick(item, "consider")}
+                          onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Coming Soon" items={upcoming}
-                          onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                          onPick={(item) => handleDiscoverPick(item, "consider")}
+                          onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         {nowPlaying.length === 0 && upcoming.length === 0 && trendingMovies.length === 0 && (
-                          <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                          <div className="empty"><div className="big">Nothing here</div>Either nothing loaded, or you've dismissed everything in this category.</div>
                         )}
                       </>
                     ) : (
                       <>
                         <DiscoverRow title="New Episodes This Week" items={onTheAir}
-                          onPick={(item) => quickAddFromDiscover(item, "want")} />
+                          onPick={(item) => handleDiscoverPick(item, "want")}
+                          onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Trending This Week" items={trendingShows}
-                          onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                          onPick={(item) => handleDiscoverPick(item, "consider")}
+                          onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         {onTheAir.length === 0 && trendingShows.length === 0 && (
-                          <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                          <div className="empty"><div className="big">Nothing here</div>Either nothing loaded, or you've dismissed everything in this category.</div>
                         )}
                       </>
                     )}
@@ -953,23 +1006,36 @@ export default function Home() {
   );
 }
 
-function DiscoverRow({ title, items, onPick }) {
+function DiscoverRow({ title, items, onPick, onDismiss, isOnList }) {
   if (!items || items.length === 0) return null;
   return (
     <div style={{ marginBottom: "22px" }}>
       <div className="discover-heading">{title}</div>
       <div className="discover-scroll">
-        {items.map((item) => (
-          <div key={item.id + item.type} className="discover-card" onClick={() => onPick(item)}>
-            {item.posterUrl ? (
-              <img src={item.posterUrl} alt="" />
-            ) : (
-              <div className="discover-fallback">🎬</div>
-            )}
-            <div className="discover-add">+</div>
-            <div className="discover-title">{item.title}</div>
-          </div>
-        ))}
+        {items.map((item) => {
+          const already = isOnList && isOnList(item);
+          return (
+            <div key={item.id + item.type} className="discover-card" onClick={() => onPick(item)}>
+              {item.posterUrl ? (
+                <img src={item.posterUrl} alt="" />
+              ) : (
+                <div className="discover-fallback">🎬</div>
+              )}
+              {onDismiss && (
+                <button className="discover-dismiss" title="Not interested"
+                  onClick={(ev) => { ev.stopPropagation(); onDismiss(item); }}>
+                  −
+                </button>
+              )}
+              {already ? (
+                <div className="discover-onlist">✓ On list</div>
+              ) : (
+                <div className="discover-add">+</div>
+              )}
+              <div className="discover-title">{item.title}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
