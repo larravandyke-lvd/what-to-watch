@@ -18,6 +18,7 @@ export default function Home() {
   const [filterService, setFilterService] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [activeTags, setActiveTags] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("recent"); // alpha | recent
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -212,8 +213,8 @@ export default function Home() {
         type: data.type || f.type,
         year: data.year ? String(data.year) : f.year,
         service: data.service || f.service,
-        genres: data.genres ? data.genres.join(", ") : f.genres,
-        cast: data.cast ? data.cast.join(", ") : f.cast,
+        genres: (data.genres && data.genres.length) ? data.genres.join(", ") : f.genres,
+        cast: (data.cast && data.cast.length) ? data.cast.join(", ") : f.cast,
         rtScore: data.rtScore ?? f.rtScore,
         rtLink: data.rtLink || f.rtLink,
       }));
@@ -556,6 +557,19 @@ export default function Home() {
   if (filterService) filtered = filtered.filter((e) => e.service === filterService);
   if (filterGenre) filtered = filtered.filter((e) => (e.genres || []).includes(filterGenre));
   if (activeTags.length) filtered = filtered.filter((e) => activeTags.every((t) => (e.tags || []).includes(t)));
+  if (searchQuery.trim()) {
+    const q = searchQuery.trim().toLowerCase();
+    filtered = filtered.filter((e) => {
+      const haystack = [
+        e.title,
+        e.cast,
+        e.service,
+        e.notes,
+        ...(e.genres || []),
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(q);
+    });
+  }
 
   filtered = [...filtered].sort((a, b) => {
     if (sortBy === "recent") return (b.createdAt || 0) - (a.createdAt || 0);
@@ -662,6 +676,18 @@ export default function Home() {
         </div>
       )}
 
+      <div className="section-label section-label-divided">Search</div>
+      <div style={{ padding: "0 16px 8px" }}>
+        <div className="search-wrap">
+          <input type="text" className="search-input" value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search title, cast, genre, service…" />
+          {searchQuery && (
+            <span className="search-clear" onClick={() => setSearchQuery("")}>✕</span>
+          )}
+        </div>
+      </div>
+
       <div className="section-label section-label-divided">Filter &amp; sort</div>
       <div className="filters">
         <div className="filters-row">
@@ -692,9 +718,9 @@ export default function Home() {
             <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
           ))}
         </div>
-        {(filterService || filterGenre || activeTags.length > 0) && (
+        {(filterService || filterGenre || activeTags.length > 0 || searchQuery) && (
           <div className="filters-row">
-            <div className="chip clear-chip" onClick={() => { setFilterService(""); setFilterGenre(""); setActiveTags([]); }}>
+            <div className="chip clear-chip" onClick={() => { setFilterService(""); setFilterGenre(""); setActiveTags([]); setSearchQuery(""); }}>
               ✕ Clear filters
             </div>
           </div>
