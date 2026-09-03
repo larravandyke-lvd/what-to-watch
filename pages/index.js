@@ -541,18 +541,27 @@ export default function Home() {
 
       <div className="section-label section-label-divided">Filter &amp; sort</div>
       <div className="filters">
-        <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="alpha">Sort: A–Z</option>
-          <option value="recent">Sort: Recently added</option>
-        </select>
-        <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-          <option value="">Any service</option>
-          {services.map((s) => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select className="chip" value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
-          <option value="">Any genre</option>
-          {allGenres.map((g) => <option key={g} value={g}>{g}</option>)}
-        </select>
+        <div className="select-wrap">
+          <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="alpha">Sort: A–Z</option>
+            <option value="recent">Sort: Recently added</option>
+          </select>
+          <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+        </div>
+        <div className="select-wrap">
+          <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
+            <option value="">Any service</option>
+            {services.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+        </div>
+        <div className="select-wrap">
+          <select className="chip" value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
+            <option value="">Any genre</option>
+            {allGenres.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+        </div>
         {["Larra", "Eric", "Family"].map((t) => (
           <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
         ))}
@@ -859,10 +868,13 @@ export default function Home() {
               </div>
 
               <label>Type</label>
-              <select className="full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                <option value="Movie">Movie</option>
-                <option value="TV Show">TV Show</option>
-              </select>
+              <div className="select-wrap select-wrap-full">
+                <select className="full" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                  <option value="Movie">Movie</option>
+                  <option value="TV Show">TV Show</option>
+                </select>
+                <span className="select-arrow select-arrow-full"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+              </div>
 
               <label>Streaming service / network</label>
               <input type="text" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Hulu, Netflix, ABC" />
