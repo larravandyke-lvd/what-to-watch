@@ -40,6 +40,10 @@ export default function Home() {
   const [dismissedIds, setDismissedIds] = useState([]);
   const [showDismissed, setShowDismissed] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [untaggedOpen, setUntaggedOpen] = useState(false);
+  const [untaggedQueue, setUntaggedQueue] = useState([]);
+  const [untaggedIndex, setUntaggedIndex] = useState(0);
+  const [wizardTags, setWizardTags] = useState([]);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -369,6 +373,37 @@ export default function Home() {
   function filterDismissed(items) {
     return (items || []).filter((i) => !dismissedIds.includes(discoverKey(i)));
   }
+  function openUntaggedWizard() {
+    const ids = visibleEntries.filter((e) => !(e.tags && e.tags.length)).map((e) => e.id);
+    setUntaggedQueue(ids);
+    setUntaggedIndex(0);
+    setWizardTags([]);
+    setUntaggedOpen(true);
+  }
+  function closeUntaggedWizard() {
+    setUntaggedOpen(false);
+  }
+  function toggleWizardTag(t) {
+    setWizardTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+  }
+  async function saveWizardTagsAndNext(current) {
+    if (wizardTags.length === 0) {
+      window.alert("Pick at least one — Larra, Eric, Maddie, or Family.");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "entries", current.id), { tags: wizardTags });
+    } catch (e) {
+      console.error(e);
+    }
+    setWizardTags([]);
+    setUntaggedIndex((i) => i + 1);
+  }
+  function skipWizardItem() {
+    setWizardTags([]);
+    setUntaggedIndex((i) => i + 1);
+  }
+
   async function loadDismissed() {
     try {
       const snap = await getDoc(doc(db, "meta", "discoverDismissed"));
@@ -560,6 +595,7 @@ export default function Home() {
   // ---------- Derived data ----------
   const visibleEntries = entries.filter((e) => !e.archived);
   const archivedEntries = entries.filter((e) => e.archived);
+  const untaggedCount = visibleEntries.filter((e) => !(e.tags && e.tags.length)).length;
 
   const services = [...new Set(visibleEntries.map((e) => e.service).filter(Boolean))].sort();
   const allGenres = [...new Set(visibleEntries.flatMap((e) => e.genres || []))].sort();
@@ -686,9 +722,16 @@ export default function Home() {
         <div className={`mode-btn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
       </div>
 
-      {archivedEntries.length > 0 && (
+      {(archivedEntries.length > 0 || untaggedCount > 0) && (
         <div className="archived-link-row">
-          <span className="archived-link" onClick={() => setArchivedOpen(true)}>🗄 Archived ({archivedEntries.length})</span>
+          {untaggedCount > 0 && (
+            <span className="archived-link" onClick={openUntaggedWizard} style={{ marginRight: "14px" }}>
+              🏷️ Untagged ({untaggedCount})
+            </span>
+          )}
+          {archivedEntries.length > 0 && (
+            <span className="archived-link" onClick={() => setArchivedOpen(true)}>🗄 Archived ({archivedEntries.length})</span>
+          )}
         </div>
       )}
 
@@ -756,6 +799,52 @@ export default function Home() {
             </div>
           ))
       )}
+
+      {untaggedOpen && (() => {
+        const current = untaggedIndex < untaggedQueue.length
+          ? entries.find((e) => e.id === untaggedQueue[untaggedIndex])
+          : null;
+        return (
+          <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) closeUntaggedWizard(); }}>
+            <div className="sheet">
+              <div className="sheet-header-bar">
+                <h2>🏷️ Tag as you go</h2>
+                <button className="sheet-close" onClick={closeUntaggedWizard}>✕ Close</button>
+              </div>
+              <div className="sheet-inner" style={{ paddingBottom: "28px" }}>
+                {current ? (
+                  <>
+                    <div className="wizard-progress">{untaggedIndex + 1} of {untaggedQueue.length}</div>
+                    {current.backdropUrl && <img className="wizard-thumb" src={current.backdropUrl} alt="" />}
+                    <div className="wizard-title">{current.title}</div>
+                    <div className="wizard-sub">{current.type}</div>
+                    <label>Who's it for</label>
+                    <div className="multichip-row">
+                      {["Larra", "Eric", "Maddie", "Family"].map((t) => (
+                        <div key={t} className={`multichip ${wizardTags.includes(t) ? "on" : ""}`}
+                          onClick={() => toggleWizardTag(t)}>{t}</div>
+                      ))}
+                    </div>
+                    <div className="sheet-actions" style={{ position: "static", background: "none" }}>
+                      <button className="btn-full ghost" onClick={skipWizardItem}>Skip</button>
+                      <button className="btn-full primary" onClick={() => saveWizardTagsAndNext(current)}>Save &amp; Next</button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="empty">
+                    <div style={{ fontSize: "36px", marginBottom: "8px" }}>🎉</div>
+                    <div className="big">All tagged!</div>
+                    Nothing left to go through.
+                    <div style={{ marginTop: "16px" }}>
+                      <button className="btn-full primary" onClick={closeUntaggedWizard}>Done</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {archivedOpen && (
         <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) setArchivedOpen(false); }}>
