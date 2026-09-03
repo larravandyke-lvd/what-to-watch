@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, arrayUnion,
+  collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc, setDoc, arrayUnion, arrayRemove,
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../lib/firebase";
@@ -37,6 +37,7 @@ export default function Home() {
   const [discoverLoading, setDiscoverLoading] = useState(false);
   const [discoverFilter, setDiscoverFilter] = useState("movies"); // movies | shows
   const [dismissedIds, setDismissedIds] = useState([]);
+  const [showDismissed, setShowDismissed] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -349,9 +350,38 @@ export default function Home() {
       console.error(e);
     }
   }
+  async function restoreDiscoverItem(item) {
+    const key = discoverKey(item);
+    setDismissedIds((prev) => prev.filter((k) => k !== key));
+    try {
+      await updateDoc(doc(db, "meta", "discoverDismissed"), { ids: arrayRemove(key) });
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  function getDismissedItems() {
+    if (!discoverData) return [];
+    const all = [
+      ...(discoverData.nowPlaying || []),
+      ...(discoverData.upcoming || []),
+      ...(discoverData.onTheAir || []),
+      ...(discoverData.trending || []),
+    ];
+    const seen = new Set();
+    const result = [];
+    all.forEach((item) => {
+      const key = discoverKey(item);
+      if (dismissedIds.includes(key) && !seen.has(key)) {
+        seen.add(key);
+        result.push(item);
+      }
+    });
+    return result;
+  }
 
   async function openDiscover() {
     setDiscoverOpen(true);
+    setShowDismissed(false);
     loadDismissed();
     if (discoverData) return;
     setDiscoverLoading(true);
@@ -775,10 +805,25 @@ export default function Home() {
                 <div className={`mode-btn ${discoverFilter === "movies" ? "active" : ""}`} onClick={() => setDiscoverFilter("movies")}>🎬 Movies</div>
                 <div className={`mode-btn ${discoverFilter === "shows" ? "active" : ""}`} onClick={() => setDiscoverFilter("shows")}>📺 Shows</div>
               </div>
+              <div className="mode-row" style={{ padding: "0 0 8px" }}>
+                <div className={`mode-btn ${discoverFilter === "movies" ? "active" : ""}`} onClick={() => setDiscoverFilter("movies")}>🎬 Movies</div>
+                <div className={`mode-btn ${discoverFilter === "shows" ? "active" : ""}`} onClick={() => setDiscoverFilter("shows")}>📺 Shows</div>
+              </div>
+              {dismissedIds.length > 0 && (
+                <div className="show-dismissed-toggle" onClick={() => setShowDismissed((v) => !v)}>
+                  {showDismissed ? "← Back to browsing" : `Show dismissed (${dismissedIds.length})`}
+                </div>
+              )}
               {discoverLoading && (
                 <div className="status-line"><div className="spinner"></div><span>Loading…</span></div>
               )}
-              {discoverData && !discoverLoading && (() => {
+              {showDismissed && !discoverLoading && (
+                <DiscoverRow title="Dismissed" items={getDismissedItems()}
+                  onPick={(item) => handleDiscoverPick(item, "consider")}
+                  onRestore={restoreDiscoverItem}
+                  isOnList={(item) => !!findExistingEntry(item)} />
+              )}
+              {!showDismissed && discoverData && !discoverLoading && (() => {
                 const nowPlaying = filterDismissed(discoverData.nowPlaying || []);
                 const upcoming = filterDismissed(discoverData.upcoming || []);
                 const onTheAir = filterDismissed(discoverData.onTheAir || []);
@@ -1006,8 +1051,11 @@ export default function Home() {
   );
 }
 
-function DiscoverRow({ title, items, onPick, onDismiss, isOnList }) {
-  if (!items || items.length === 0) return null;
+function DiscoverRow({ title, items, onPick, onDismiss, onRestore, isOnList }) {
+  if (!items || items.length === 0) {
+    if (onRestore) return <div className="empty"><div className="big">Nothing dismissed</div>Items you dismiss will show up here so you can bring them back.</div>;
+    return null;
+  }
   return (
     <div style={{ marginBottom: "22px" }}>
       <div className="discover-heading">{title}</div>
@@ -1021,10 +1069,10 @@ function DiscoverRow({ title, items, onPick, onDismiss, isOnList }) {
               ) : (
                 <div className="discover-fallback">🎬</div>
               )}
-              {onDismiss && (
-                <button className="discover-dismiss" title="Not interested"
-                  onClick={(ev) => { ev.stopPropagation(); onDismiss(item); }}>
-                  −
+              {(onDismiss || onRestore) && (
+                <button className="discover-dismiss" title={onRestore ? "Restore" : "Not interested"}
+                  onClick={(ev) => { ev.stopPropagation(); onRestore ? onRestore(item) : onDismiss(item); }}>
+                  {onRestore ? "↺" : "−"}
                 </button>
               )}
               {already ? (
