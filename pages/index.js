@@ -753,7 +753,10 @@ export default function Home() {
     <>
       <header>
         <div style={{ fontSize: "12px", letterSpacing: "0.15em", color: "var(--gold-dim)", marginBottom: "2px" }}>CVD</div>
-        <a href="https://portals-gateway.vercel.app" style={{ position: "absolute", top: "14px", left: "14px", fontSize: "11px", fontWeight: 700, color: "var(--gold-dim)", textDecoration: "none" }}>🔗 Portals Menu</a>
+        <a href="https://portals-gateway.vercel.app" style={{ position: "absolute", top: "14px", left: "14px", fontSize: "12px", fontWeight: 700, color: "var(--gold-dim)", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px", fontFamily: "Georgia,serif" }}>
+          <svg width="18" height="18" viewBox="0 0 64 64"><defs><linearGradient id="pmg1" x1="4" y1="2" x2="60" y2="62" gradientUnits="userSpaceOnUse"><stop offset="0" stopColor="#f6e3b4"/><stop offset=".5" stopColor="#c9a24b"/><stop offset="1" stopColor="#7a5a35"/></linearGradient></defs><circle cx="32" cy="32" r="30" fill="url(#pmg1)"/><circle cx="32" cy="32" r="26" fill="none" stroke="#1b1207" strokeOpacity=".28" strokeWidth="1.5"/><text x="32" y="43" fontFamily="Georgia,serif" fontStyle="italic" fontWeight="700" fontSize="30" fill="#1b1207" textAnchor="middle">V</text></svg>
+          Portal Menu
+        </a>
         <h1 className="marquee-font">🍿 WHAT TO WATCH</h1>
         <p>Snap it, type it, never lose it again.</p>
         <div className="sync-row">
