@@ -46,6 +46,7 @@ export default function Home() {
   const [wizardTags, setWizardTags] = useState([]);
   const [navList, setNavList] = useState(null);
   const [navIndex, setNavIndex] = useState(0);
+  const [relatedLoadingId, setRelatedLoadingId] = useState(null);
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -270,12 +271,19 @@ export default function Home() {
   }
 
   async function findRelated(entry) {
+    setRelatedLoadingId(entry.id);
     try {
       const arr = await callApi("/api/related", { title: entry.title, genres: entry.genres || [] });
-      await updateDoc(doc(db, "entries", entry.id), { related: arr });
+      if (!Array.isArray(arr) || arr.length === 0) {
+        window.alert("Couldn't find similar titles for \"" + entry.title + "\" — try again in a moment.");
+      } else {
+        await updateDoc(doc(db, "entries", entry.id), { related: arr });
+      }
     } catch (e) {
       console.error(e);
+      window.alert("Find similar failed: " + e.message);
     }
+    setRelatedLoadingId(null);
   }
 
   function openQuickLookup() {
@@ -686,6 +694,7 @@ export default function Home() {
         {items.map((e, i) => (
           <Card key={e.id} e={e} onEdit={() => openEdit(e, { list: idList, index: i })} onDelete={archiveEntry} onMove={moveStatus}
             onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated}
+            relatedLoadingId={relatedLoadingId}
             logo={serviceLogos[e.service]} />
         ))}
       </div>
@@ -1118,7 +1127,9 @@ export default function Home() {
                   {editingEntry.status === "watched" && (
                     <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Watch again</button>
                   )}
-                  <button className="btn-mini" onClick={() => findRelated(editingEntry)}>Find similar</button>
+                  <button className="btn-mini" onClick={() => findRelated(editingEntry)} disabled={relatedLoadingId === editingEntry.id}>
+                    {relatedLoadingId === editingEntry.id ? "Finding…" : "Find similar"}
+                  </button>
                   <button className="btn-mini" onClick={() => { if (window.confirm(`Archive "${editingEntry.title}"? You can restore it later from the Archived list.`)) { archiveEntry(editingId); closeSheet(); } }}>Archive</button>
                 </div>
               )}
@@ -1355,7 +1366,7 @@ function Tile({ e, onOpen, logo }) {
   );
 }
 
-function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated, logo }) {
+function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated, logo, relatedLoadingId }) {
   const [epVal, setEpVal] = useState(e.episode || "");
   useEffect(() => setEpVal(e.episode || ""), [e.episode]);
 
@@ -1422,7 +1433,9 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
             <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Back to list</button>
           </>}
           {e.status === "watched" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Watch again</button>}
-          <button className="btn-mini" onClick={() => onRelated(e)}>Find similar</button>
+          <button className="btn-mini" onClick={() => onRelated(e)} disabled={relatedLoadingId === e.id}>
+            {relatedLoadingId === e.id ? "Finding…" : "Find similar"}
+          </button>
           <button className="btn-mini" onClick={() => onEdit(e)}>Edit</button>
           <button className="btn-mini" onClick={() => { if (window.confirm(`Archive "${e.title}"? You can restore it later from the Archived list.`)) onDelete(e.id); }}>Archive</button>
         </div>
