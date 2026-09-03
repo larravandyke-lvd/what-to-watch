@@ -354,9 +354,9 @@ export default function Home() {
       </div>
 
       <div className="tabs">
-        {["all", "want", "watching", "watched"].map((s) => (
+        {["all", "consider", "want", "watching", "watched"].map((s) => (
           <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
-            {s === "all" ? "All" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+            {s === "all" ? "All" : s === "consider" ? "Considering" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
             <span className="count">
               ({s === "all" ? entries.length : entries.filter((e) => e.status === s).length})
             </span>
@@ -419,6 +419,12 @@ export default function Home() {
 
               {editingEntry && (
                 <div className="card-actions" style={{ marginBottom: "8px" }}>
+                  {editingEntry.status === "consider" && (
+                    <>
+                      <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Add to my list</button>
+                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
+                    </>
+                  )}
                   {editingEntry.status === "want" && (
                     <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
                   )}
@@ -504,7 +510,7 @@ export default function Home() {
 
               <label>Status</label>
               <div className="multichip-row">
-                {[["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
+                {[["consider", "Considering"], ["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
                   <div key={s} className={`multichip ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{label}</div>
                 ))}
               </div>
@@ -570,6 +576,7 @@ export default function Home() {
 function EmptyState({ tab }) {
   const msg = {
     all: "Nothing tracked yet. Tap + to add the first thing.",
+    consider: "Nothing to weigh in on yet. Add something you're on the fence about.",
     want: "Nothing on the list yet. Tap + to add the next thing you hear about.",
     watching: "Nothing in progress. Move something here once you start it.",
     watched: "Nothing watched yet — your history will collect here.",
@@ -631,8 +638,8 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
             <p className="card-title">{e.title}</p>
             <p className="card-sub">
               {e.type}{e.year ? " (" + e.year + ")" : ""}{e.cast ? " · " + e.cast : ""}
-              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : "var(--text-muted)" }}>
-                {e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
+              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : e.status === "consider" ? "var(--teal)" : "var(--text-muted)" }}>
+                {e.status === "consider" ? "Considering" : e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
               </span>
             </p>
           </div>
@@ -667,6 +674,10 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
         )}
 
         <div className="card-actions">
+          {e.status === "consider" && <>
+            <button className="btn-mini primary" onClick={() => onMove(e.id, "want")}>Add to my list</button>
+            <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Start watching</button>
+          </>}
           {e.status === "want" && <button className="btn-mini primary" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
           {e.status === "watching" && <>
             <button className="btn-mini primary" onClick={() => onMove(e.id, "watched")}>Mark watched</button>
