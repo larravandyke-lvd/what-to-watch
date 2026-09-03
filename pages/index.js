@@ -373,6 +373,12 @@ export default function Home() {
   function filterDismissed(items) {
     return (items || []).filter((i) => !dismissedIds.includes(discoverKey(i)));
   }
+  useEffect(() => {
+    if (!untaggedOpen) return;
+    const current = untaggedQueue[untaggedIndex] ? entries.find((e) => e.id === untaggedQueue[untaggedIndex]) : null;
+    setWizardTags(current && current.tags ? current.tags : []);
+  }, [untaggedIndex, untaggedOpen]);
+
   function openUntaggedWizard() {
     const ids = visibleEntries.filter((e) => !(e.tags && e.tags.length)).map((e) => e.id);
     setUntaggedQueue(ids);
@@ -396,11 +402,9 @@ export default function Home() {
     } catch (e) {
       console.error(e);
     }
-    setWizardTags([]);
     setUntaggedIndex((i) => i + 1);
   }
   function skipWizardItem() {
-    setWizardTags([]);
     setUntaggedIndex((i) => i + 1);
   }
 
@@ -824,6 +828,17 @@ export default function Home() {
                         <div key={t} className={`multichip ${wizardTags.includes(t) ? "on" : ""}`}
                           onClick={() => toggleWizardTag(t)}>{t}</div>
                       ))}
+                    </div>
+                    <div className="sheet-actions" style={{ position: "static", background: "none" }}>
+                      <button className="btn-mini" disabled={untaggedIndex === 0}
+                        onClick={() => setUntaggedIndex((i) => Math.max(0, i - 1))} style={{ opacity: untaggedIndex === 0 ? 0.4 : 1 }}>
+                        ‹ Prior
+                      </button>
+                      <button className="btn-mini" disabled={untaggedIndex >= untaggedQueue.length - 1}
+                        onClick={() => setUntaggedIndex((i) => Math.min(untaggedQueue.length - 1, i + 1))}
+                        style={{ opacity: untaggedIndex >= untaggedQueue.length - 1 ? 0.4 : 1 }}>
+                        Next ›
+                      </button>
                     </div>
                     <div className="sheet-actions" style={{ position: "static", background: "none" }}>
                       <button className="btn-full ghost" onClick={skipWizardItem}>Skip</button>
