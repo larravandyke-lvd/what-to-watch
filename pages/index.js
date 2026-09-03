@@ -28,6 +28,7 @@ export default function Home() {
   const [pendingBackdrop, setPendingBackdrop] = useState(null);
   const [aiStatus, setAiStatus] = useState("");
   const [syncStatus, setSyncStatus] = useState("Connecting…");
+  const [serviceLogos, setServiceLogos] = useState({});
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
 
@@ -68,6 +69,22 @@ export default function Home() {
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
   }, [sheetOpen]);
+
+  // Fetch the official logo for each unique streaming service as new ones show up
+  useEffect(() => {
+    const services = [...new Set(entries.map((e) => e.service).filter(Boolean))];
+    const missing = services.filter((s) => !(s in serviceLogos));
+    if (missing.length === 0) return;
+    missing.forEach(async (s) => {
+      try {
+        const res = await fetch("/api/provider-logo?service=" + encodeURIComponent(s));
+        const data = await res.json();
+        setServiceLogos((prev) => ({ ...prev, [s]: data.logoUrl || null }));
+      } catch (e) {
+        setServiceLogos((prev) => ({ ...prev, [s]: null }));
+      }
+    });
+  }, [entries]);
 
   // ---------- Helpers ----------
   async function callApi(path, body, isGet) {
@@ -263,7 +280,7 @@ export default function Home() {
     if (layout === "tiles") {
       return (
         <div className="tile-grid">
-          {items.map((e) => <Tile key={e.id} e={e} onOpen={openEdit} />)}
+          {items.map((e) => <Tile key={e.id} e={e} onOpen={openEdit} logo={serviceLogos[e.service]} />)}
         </div>
       );
     }
@@ -271,7 +288,8 @@ export default function Home() {
       <div className="list">
         {items.map((e) => (
           <Card key={e.id} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
-            onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated} />
+            onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated}
+            logo={serviceLogos[e.service]} />
         ))}
       </div>
     );
@@ -286,7 +304,7 @@ export default function Home() {
         <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
       </header>
 
-      <div style={{ padding: "16px 16px 0" }}>
+      <div style={{ padding: "16px 16px 0", display: "flex", justifyContent: "center" }}>
         <button className="add-pill" onClick={openAdd}>
           <span style={{ fontSize: "16px" }}>➕</span> Add something
         </button>
@@ -490,7 +508,7 @@ function rtClass(score) {
   return Number(score) >= 60 ? "rt-fresh" : "rt-rotten";
 }
 
-function Tile({ e, onOpen }) {
+function Tile({ e, onOpen, logo }) {
   return (
     <div className="tile" onClick={() => onOpen(e)}>
       <div className={`tile-status-dot ${e.status}`}></div>
@@ -507,7 +525,7 @@ function Tile({ e, onOpen }) {
         <div className="tile-info">
           <div className="tile-title">{e.title}</div>
           <div className="tile-sub">
-            {e.service || e.type}
+            {logo ? <img className="service-logo" src={logo} alt={e.service} /> : (e.service || e.type)}
             {e.episode ? ` · ${e.episode}` : ""}
           </div>
         </div>
@@ -516,7 +534,7 @@ function Tile({ e, onOpen }) {
   );
 }
 
-function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated }) {
+function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated, logo }) {
   const [epVal, setEpVal] = useState(e.episode || "");
   useEffect(() => setEpVal(e.episode || ""), [e.episode]);
 
@@ -546,7 +564,7 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           )}
         </div>
         <div className="chips-row">
-          {e.service && <span className="tagchip">{e.service}</span>}
+          {e.service && (logo ? <img className="service-logo-chip" src={logo} alt={e.service} title={e.service} /> : <span className="tagchip">{e.service}</span>)}
           {(e.genres || []).map((g) => <span key={g} className="tagchip">{g}</span>)}
           {(e.tags || []).map((t) => <span key={t} className="tagchip person">{t}</span>)}
         </div>

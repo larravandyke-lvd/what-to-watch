@@ -142,6 +142,14 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 .chips-row{ display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
 .tagchip{ font-size:10.5px; padding:3px 8px; border-radius:20px; background:var(--surface-raised); color:var(--text-muted); border:1px solid var(--line); }
 .tagchip.person{ color:var(--gold); border-color:var(--gold-dim); }
+.service-logo-chip{
+  height:22px; max-width:80px; object-fit:contain; border-radius:5px;
+  background:#fff; padding:2px 5px; display:inline-block; vertical-align:middle;
+}
+.service-logo{
+  height:14px; max-width:60px; object-fit:contain; border-radius:3px;
+  background:#fff; padding:1px 3px; vertical-align:middle; display:inline-block;
+}
 
 .progress-row{ margin-top:10px; display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); }
 .progress-row input{ background:var(--surface-raised); border:1px solid var(--line); border-radius:6px; color:var(--text); padding:5px 8px; font-size:12px; width:150px; font-family:inherit; }
@@ -205,8 +213,9 @@ textarea{ resize:vertical; min-height:50px; }
 
 .add-pill{
   display:inline-flex; align-items:center; gap:6px;
-  padding:9px 16px; border-radius:20px; border:1px solid var(--teal-dim);
-  background:var(--surface); color:var(--teal); font-size:13.5px; font-weight:600;
+  padding:10px 18px; border-radius:20px; border:none;
+  background:var(--teal); color:#0d1b1a; font-size:13.5px; font-weight:700;
   cursor:pointer; font-family:inherit;
+  box-shadow:0 4px 14px rgba(79,189,186,0.35);
 }
-.add-pill:hover{ background:var(--surface-raised); border-color:var(--teal); }
+.add-pill:hover{ background:#63cac7; box-shadow:0 4px 18px rgba(79,189,186,0.5); }
