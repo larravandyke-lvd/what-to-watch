@@ -1216,6 +1216,9 @@ export default function Home() {
                 <span className="select-arrow select-arrow-full"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
               </div>
 
+              <label>What it's about</label>
+              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="A short synopsis will fill in automatically after Look up." />
+
               <label>Streaming service / network</label>
               <input type="text" value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="e.g. Hulu, Netflix, ABC" />
 
@@ -1241,9 +1244,6 @@ export default function Home() {
 
               <label>Top cast</label>
               <input type="text" value={form.cast} onChange={(e) => setForm({ ...form, cast: e.target.value })} placeholder="e.g. Teri Hatcher, Felicity Huffman" />
-
-              <label>What it's about</label>
-              <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="A short synopsis will fill in automatically after Look up." />
 
               {(status === "watching" || status === "watched") && form.type === "TV Show" && (
                 <>
