@@ -222,9 +222,15 @@ export default function Home() {
       callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
         .then((b) => setPendingBackdrop(b.backdropUrl || null))
         .catch(() => {});
-      setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
+      if (data.error) {
+        setAiStatus("ERROR (temporary debug): " + data.error);
+      } else if (data.debug) {
+        setAiStatus("DEBUG (temporary): " + data.debug);
+      } else {
+        setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
+      }
     } catch (e) {
-      setAiStatus("Couldn't look that up — fill in manually");
+      setAiStatus("Couldn't look that up — fill in manually (" + e.message + ")");
     }
   }
 
