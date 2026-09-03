@@ -350,13 +350,13 @@ export default function Home() {
     const key = normKey(item.title, item.type);
     return visibleEntries.find((e) => normKey(e.title, e.type) === key) || null;
   }
-  function handleDiscoverPick(item, presetStatus) {
+  function handleDiscoverPick(item, presetStatus, serviceOverride) {
     const existing = findExistingEntry(item);
     if (existing) {
       setDiscoverOpen(false);
       openEdit(existing);
     } else {
-      quickAddFromDiscover(item, presetStatus);
+      quickAddFromDiscover(item, presetStatus, serviceOverride);
     }
   }
   function discoverKey(item) { return `${item.type}-${item.id}`; }
@@ -424,10 +424,10 @@ export default function Home() {
     setDiscoverLoading(false);
   }
 
-  function quickAddFromDiscover(item, presetStatus) {
+  function quickAddFromDiscover(item, presetStatus, serviceOverride) {
     setCandidates([]);
     setEditingId(null);
-    setForm({ ...EMPTY_FORM, title: item.title, type: item.type });
+    setForm({ ...EMPTY_FORM, title: item.title, type: item.type, service: serviceOverride || "" });
     setTags([]);
     setStatus(presetStatus || "consider");
     setMethod("type");
@@ -436,7 +436,7 @@ export default function Home() {
     setShowLinkInput(false);
     setDiscoverOpen(false);
     setSheetOpen(true);
-    runEnrichment(item.title, item.year);
+    runEnrichment(item.title, item.year, serviceOverride || "");
   }
 
   // ---------- Form open/close ----------
@@ -875,10 +875,10 @@ export default function Home() {
                     {discoverFilter === "movies" ? (
                       <>
                         <DiscoverRow title="In Theaters Now" items={nowPlaying}
-                          onPick={(item) => handleDiscoverPick(item, "want")}
+                          onPick={(item) => handleDiscoverPick(item, "want", "In Theaters")}
                           onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Trending This Week" items={trendingMovies}
-                          onPick={(item) => handleDiscoverPick(item, "consider")}
+                          onPick={(item) => handleDiscoverPick(item, "consider", nowPlaying.some((n) => n.id === item.id) ? "In Theaters" : undefined)}
                           onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Coming Soon" items={upcoming}
                           onPick={(item) => handleDiscoverPick(item, "consider")}
