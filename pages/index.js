@@ -56,11 +56,19 @@ export default function Home() {
       window.history.scrollRestoration = "manual";
     }
     window.scrollTo(0, 0);
+    // Content (like the Firestore list) can load in a moment after mount and
+    // shift page height, which can nudge scroll position — re-assert after a beat.
+    const t1 = setTimeout(() => window.scrollTo(0, 0), 150);
+    const t2 = setTimeout(() => window.scrollTo(0, 0), 600);
     // pageshow fires even when a page is restored from cache (e.g. reopening
     // a link inside the Messages in-app browser), unlike a normal mount effect.
     function handlePageShow() { window.scrollTo(0, 0); }
     window.addEventListener("pageshow", handlePageShow);
-    return () => window.removeEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, []);
 
   // Show a floating "back to top" button once scrolled down a bit
@@ -618,7 +626,9 @@ export default function Home() {
       <div className="tabs">
         {["all", "consider", "theaters", "want", "watching", "watched"].map((s) => (
           <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
-            {s === "all" ? "All" : s === "consider" ? "Considering" : s === "theaters" ? "In Theaters" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+            <span className="tab-label">
+              {s === "all" ? "All" : s === "consider" ? "Considering" : s === "theaters" ? "In Theaters" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+            </span>
             <span className="count">
               ({s === "all" ? visibleEntries.length : visibleEntries.filter((e) => e.status === s).length})
             </span>
@@ -828,10 +838,6 @@ export default function Home() {
               <button className="sheet-close" onClick={() => setDiscoverOpen(false)}>✕ Close</button>
             </div>
             <div className="sheet-inner" style={{ paddingBottom: "28px" }}>
-              <div className="mode-row" style={{ padding: "0 0 14px" }}>
-                <div className={`mode-btn ${discoverFilter === "movies" ? "active" : ""}`} onClick={() => setDiscoverFilter("movies")}>🎬 Movies</div>
-                <div className={`mode-btn ${discoverFilter === "shows" ? "active" : ""}`} onClick={() => setDiscoverFilter("shows")}>📺 Shows</div>
-              </div>
               <div className="mode-row" style={{ padding: "0 0 8px" }}>
                 <div className={`mode-btn ${discoverFilter === "movies" ? "active" : ""}`} onClick={() => setDiscoverFilter("movies")}>🎬 Movies</div>
                 <div className={`mode-btn ${discoverFilter === "shows" ? "active" : ""}`} onClick={() => setDiscoverFilter("shows")}>📺 Shows</div>
