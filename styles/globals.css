@@ -161,7 +161,6 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 }
 .tile-status-dot.want{ background:var(--text-muted); }
 .tile-status-dot.consider{ background:var(--teal); }
-.tile-status-dot.theaters{ background:var(--red); }
 .tile-status-dot.watching{ background:var(--gold); }
 .tile-status-dot.watched{ background:var(--green); }
 
@@ -183,7 +182,6 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 .card-body::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; }
 .card.want .card-body::before{ background:var(--text-muted); }
 .card.consider .card-body::before{ background:var(--teal); }
-.card.theaters .card-body::before{ background:var(--red); }
 .card.watching .card-body::before{ background:var(--gold); }
 .card.watched .card-body::before{ background:var(--green); }
 

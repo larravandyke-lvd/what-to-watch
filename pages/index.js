@@ -85,8 +85,15 @@ export default function Home() {
     const unsub = onSnapshot(
       collection(db, "entries"),
       (snap) => {
-        setEntries(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setEntries(list);
         setSyncStatus("Synced across devices");
+        // "In Theaters" was removed as a category — migrate any leftover entries back to Want to Watch.
+        list.forEach((e) => {
+          if (e.status === "theaters") {
+            updateDoc(doc(db, "entries", e.id), { status: "want" }).catch((err) => console.error(err));
+          }
+        });
       },
       (err) => {
         console.error(err);
@@ -624,10 +631,10 @@ export default function Home() {
       </div>
 
       <div className="tabs">
-        {["all", "consider", "theaters", "want", "watching", "watched"].map((s) => (
+        {["all", "consider", "want", "watching", "watched"].map((s) => (
           <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
             <span className="tab-label">
-              {s === "all" ? "All" : s === "consider" ? "Considering" : s === "theaters" ? "In Theaters" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
+              {s === "all" ? "All" : s === "consider" ? "Considering" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
             </span>
             <span className="count">
               ({s === "all" ? visibleEntries.length : visibleEntries.filter((e) => e.status === s).length})
@@ -868,10 +875,10 @@ export default function Home() {
                     {discoverFilter === "movies" ? (
                       <>
                         <DiscoverRow title="In Theaters Now" items={nowPlaying}
-                          onPick={(item) => handleDiscoverPick(item, "theaters")}
+                          onPick={(item) => handleDiscoverPick(item, "want")}
                           onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Trending This Week" items={trendingMovies}
-                          onPick={(item) => handleDiscoverPick(item, nowPlaying.some((n) => n.id === item.id) ? "theaters" : "consider")}
+                          onPick={(item) => handleDiscoverPick(item, "consider")}
                           onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Coming Soon" items={upcoming}
                           onPick={(item) => handleDiscoverPick(item, "consider")}
@@ -918,12 +925,6 @@ export default function Home() {
                     <>
                       <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Add to my list</button>
                       <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
-                    </>
-                  )}
-                  {editingEntry.status === "theaters" && (
-                    <>
-                      <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watched"); setStatus("watched"); }}>Saw it</button>
-                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Wait for streaming</button>
                     </>
                   )}
                   {editingEntry.status === "want" && (
@@ -1014,7 +1015,7 @@ export default function Home() {
 
               <label>Status</label>
               <div className="multichip-row">
-                {[["consider", "Considering"], ["theaters", "In Theaters"], ["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
+                {[["consider", "Considering"], ["want", "Want to Watch"], ["watching", "Watching"], ["watched", "Watched"]].map(([s, label]) => (
                   <div key={s} className={`multichip ${status === s ? "on" : ""}`} onClick={() => setStatus(s)}>{label}</div>
                 ))}
               </div>
@@ -1126,7 +1127,6 @@ function EmptyState({ tab }) {
   const msg = {
     all: "Nothing tracked yet. Tap + to add the first thing.",
     consider: "Nothing to weigh in on yet. Add something you're on the fence about.",
-    theaters: "Nothing on the big screen radar. Add a movie you want to catch before it's gone.",
     want: "Nothing on the list yet. Tap + to add the next thing you hear about.",
     watching: "Nothing in progress. Move something here once you start it.",
     watched: "Nothing watched yet — your history will collect here.",
@@ -1191,8 +1191,8 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
             <p className="card-title">{e.title}</p>
             <p className="card-sub">
               {e.type}{e.year ? " (" + e.year + ")" : ""}{e.cast ? " · " + e.cast : ""}
-              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : e.status === "consider" ? "var(--teal)" : e.status === "theaters" ? "var(--red)" : "var(--text-muted)" }}>
-                {e.status === "consider" ? "Considering" : e.status === "theaters" ? "In Theaters" : e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
+              {" · "}<span style={{ color: e.status === "watching" ? "var(--gold)" : e.status === "watched" ? "var(--green)" : e.status === "consider" ? "var(--teal)" : "var(--text-muted)" }}>
+                {e.status === "consider" ? "Considering" : e.status === "want" ? "Want to Watch" : e.status === "watching" ? "Watching" : "Watched"}
               </span>
             </p>
           </div>
@@ -1230,10 +1230,6 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           {e.status === "consider" && <>
             <button className="btn-mini primary" onClick={() => onMove(e.id, "want")}>Add to my list</button>
             <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Start watching</button>
-          </>}
-          {e.status === "theaters" && <>
-            <button className="btn-mini primary" onClick={() => onMove(e.id, "watched")}>Saw it</button>
-            <button className="btn-mini" onClick={() => onMove(e.id, "want")}>Wait for streaming</button>
           </>}
           {e.status === "want" && <button className="btn-mini primary" onClick={() => onMove(e.id, "watching")}>Start watching</button>}
           {e.status === "watching" && <>
