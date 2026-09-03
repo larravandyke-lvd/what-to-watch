@@ -55,6 +55,11 @@ export default function Home() {
       window.history.scrollRestoration = "manual";
     }
     window.scrollTo(0, 0);
+    // pageshow fires even when a page is restored from cache (e.g. reopening
+    // a link inside the Messages in-app browser), unlike a normal mount effect.
+    function handlePageShow() { window.scrollTo(0, 0); }
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
   }, []);
 
   // ---------- Realtime sync ----------
