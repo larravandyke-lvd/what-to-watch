@@ -35,6 +35,13 @@ export default function Home() {
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [discoverData, setDiscoverData] = useState(null);
   const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickTitle, setQuickTitle] = useState("");
+  const [quickCandidates, setQuickCandidates] = useState([]);
+  const [quickResult, setQuickResult] = useState(null);
+  const [quickLogo, setQuickLogo] = useState(null);
+  const [quickStatus, setQuickStatus] = useState("");
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
 
@@ -214,6 +221,82 @@ export default function Home() {
     }
   }
 
+  function openQuickLookup() {
+    setQuickOpen(true);
+    setQuickTitle("");
+    setQuickCandidates([]);
+    setQuickResult(null);
+    setQuickLogo(null);
+    setQuickStatus("");
+  }
+  function closeQuickLookup() { setQuickOpen(false); }
+
+  async function runQuickSearch(title) {
+    if (!title) return;
+    setQuickCandidates([]);
+    setQuickResult(null);
+    setQuickStatus("Searching…");
+    try {
+      const data = await callApi("/api/search-titles", { title }, true);
+      const results = data.results || [];
+      if (results.length <= 1) {
+        await runQuickEnrich(title, results[0]?.year || "");
+      } else {
+        setQuickStatus("");
+        setQuickCandidates(results);
+      }
+    } catch (e) {
+      await runQuickEnrich(title);
+    }
+  }
+
+  async function pickQuickCandidate(c) {
+    setQuickCandidates([]);
+    await runQuickEnrich(c.title, c.year);
+  }
+
+  async function runQuickEnrich(title, year) {
+    setQuickStatus("Looking up details…");
+    try {
+      const data = await callApi("/api/enrich", { title, year: year || "" });
+      setQuickResult({ title, ...data });
+      setQuickStatus("");
+      if (data.service) {
+        callApi("/api/provider-logo", { service: data.service }, true)
+          .then((d) => setQuickLogo(d.logoUrl || null))
+          .catch(() => setQuickLogo(null));
+      } else {
+        setQuickLogo(null);
+      }
+    } catch (e) {
+      setQuickStatus("Couldn't look that up.");
+    }
+  }
+
+  function addQuickResultToList() {
+    if (!quickResult) return;
+    setCandidates([]);
+    setEditingId(null);
+    setForm({
+      ...EMPTY_FORM,
+      title: quickResult.title,
+      type: quickResult.type || "TV Show",
+      service: quickResult.service || "",
+      genres: quickResult.genres ? quickResult.genres.join(", ") : "",
+      cast: quickResult.cast ? quickResult.cast.join(", ") : "",
+      rtScore: quickResult.rtScore ?? "",
+      rtLink: quickResult.rtLink || "",
+    });
+    setTags([]);
+    setStatus("want");
+    setMethod("type");
+    setThumbPreview(null);
+    setPendingBackdrop(null);
+    setShowLinkInput(false);
+    setQuickOpen(false);
+    setSheetOpen(true);
+  }
+
   async function openDiscover() {
     setDiscoverOpen(true);
     if (discoverData) return;
@@ -323,6 +406,14 @@ export default function Home() {
     try { await updateDoc(doc(db, "entries", id), { status: newStatus }); }
     catch (e) { console.error(e); }
   }
+  async function archiveEntry(id) {
+    try { await updateDoc(doc(db, "entries", id), { archived: true }); }
+    catch (e) { console.error(e); }
+  }
+  async function restoreEntry(id) {
+    try { await updateDoc(doc(db, "entries", id), { archived: false }); }
+    catch (e) { console.error(e); }
+  }
   async function removeEntry(id) {
     try { await deleteDoc(doc(db, "entries", id)); }
     catch (e) { console.error(e); }
@@ -333,10 +424,13 @@ export default function Home() {
   }
 
   // ---------- Derived data ----------
-  const services = [...new Set(entries.map((e) => e.service).filter(Boolean))].sort();
-  const allGenres = [...new Set(entries.flatMap((e) => e.genres || []))].sort();
+  const visibleEntries = entries.filter((e) => !e.archived);
+  const archivedEntries = entries.filter((e) => e.archived);
 
-  let filtered = currentTab === "all" ? [...entries] : entries.filter((e) => e.status === currentTab);
+  const services = [...new Set(visibleEntries.map((e) => e.service).filter(Boolean))].sort();
+  const allGenres = [...new Set(visibleEntries.flatMap((e) => e.genres || []))].sort();
+
+  let filtered = currentTab === "all" ? [...visibleEntries] : visibleEntries.filter((e) => e.status === currentTab);
   if (filterService) filtered = filtered.filter((e) => e.service === filterService);
   if (filterGenre) filtered = filtered.filter((e) => (e.genres || []).includes(filterGenre));
   if (activeTags.length) filtered = filtered.filter((e) => activeTags.every((t) => (e.tags || []).includes(t)));
@@ -380,7 +474,7 @@ export default function Home() {
     return (
       <div className="list">
         {items.map((e) => (
-          <Card key={e.id} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
+          <Card key={e.id} e={e} onEdit={openEdit} onDelete={archiveEntry} onMove={moveStatus}
             onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated}
             logo={serviceLogos[e.service]} />
         ))}
@@ -409,6 +503,9 @@ export default function Home() {
         <button className="discover-pill" onClick={openDiscover}>
           🎬 New &amp; Upcoming
         </button>
+        <button className="quick-pill" onClick={openQuickLookup}>
+          🔍 Quick lookup
+        </button>
       </div>
 
       <div className="tabs">
@@ -416,7 +513,7 @@ export default function Home() {
           <div key={s} className={`tab ${currentTab === s ? "active" : ""}`} onClick={() => setCurrentTab(s)}>
             {s === "all" ? "All" : s === "consider" ? "Considering" : s === "theaters" ? "In Theaters" : s === "want" ? "Want to Watch" : s === "watching" ? "Watching" : "Watched"}
             <span className="count">
-              ({s === "all" ? entries.length : entries.filter((e) => e.status === s).length})
+              ({s === "all" ? visibleEntries.length : visibleEntries.filter((e) => e.status === s).length})
             </span>
           </div>
         ))}
@@ -432,6 +529,12 @@ export default function Home() {
         <div className={`mode-btn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
         <div className={`mode-btn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
       </div>
+
+      {archivedEntries.length > 0 && (
+        <div className="archived-link-row">
+          <span className="archived-link" onClick={() => setArchivedOpen(true)}>🗄 Archived ({archivedEntries.length})</span>
+        </div>
+      )}
 
       <div className="filters">
         <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -468,6 +571,122 @@ export default function Home() {
               {renderItems(group.items)}
             </div>
           ))
+      )}
+
+      {archivedOpen && (
+        <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) setArchivedOpen(false); }}>
+          <div className="sheet">
+            <div className="sheet-header-bar">
+              <h2>🗄 Archived</h2>
+              <button className="sheet-close" onClick={() => setArchivedOpen(false)}>✕ Close</button>
+            </div>
+            <div className="sheet-inner" style={{ paddingBottom: "28px" }}>
+              {archivedEntries.length === 0 ? (
+                <div className="empty">
+                  <div style={{ fontSize: "36px", marginBottom: "8px" }}>🗄</div>
+                  <div className="big">Nothing archived</div>
+                  Things you archive show up here instead of disappearing forever.
+                </div>
+              ) : (
+                archivedEntries.map((e) => (
+                  <div key={e.id} className="archived-row">
+                    <div>
+                      <div className="archived-title">{e.title}</div>
+                      <div className="archived-sub">{e.type}{e.year ? ` (${e.year})` : ""}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                      <button className="btn-mini primary" onClick={() => restoreEntry(e.id)}>Restore</button>
+                      <button className="btn-mini" onClick={() => { if (window.confirm("Delete forever? This can't be undone.")) removeEntry(e.id); }}>
+                        Delete forever
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {quickOpen && (
+        <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) closeQuickLookup(); }}>
+          <div className="sheet">
+            <div className="sheet-header-bar">
+              <h2>🔍 Quick Lookup</h2>
+              <button className="sheet-close" onClick={closeQuickLookup}>✕ Close</button>
+            </div>
+            <div className="sheet-inner" style={{ paddingBottom: "28px" }}>
+              <label>Title</label>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input type="text" value={quickTitle} style={{ flex: 1 }}
+                  onChange={(e) => setQuickTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && quickTitle.trim()) {
+                      e.preventDefault();
+                      runQuickSearch(quickTitle.trim());
+                    }
+                  }}
+                  placeholder="e.g. Severance" />
+                <button type="button" className="btn-mini primary" style={{ flexShrink: 0 }}
+                  onClick={() => quickTitle.trim() && runQuickSearch(quickTitle.trim())}>
+                  Look up
+                </button>
+              </div>
+
+              {quickStatus && <div className="status-line"><div className="spinner"></div><span>{quickStatus}</span></div>}
+
+              {quickCandidates.length > 0 && (
+                <div className="candidate-picker">
+                  <div className="candidate-picker-label">More than one match — which one?</div>
+                  {quickCandidates.map((c) => (
+                    <div key={c.id} className="candidate-row" onClick={() => pickQuickCandidate(c)}>
+                      {c.posterUrl ? (
+                        <img src={c.posterUrl} alt="" className="candidate-poster" />
+                      ) : (
+                        <div className="candidate-poster candidate-poster-fallback">🎬</div>
+                      )}
+                      <div>
+                        <div className="candidate-title">{c.title}</div>
+                        <div className="candidate-sub">{c.type}{c.year ? " · " + c.year : ""}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {quickResult && (
+                <div className="quick-result">
+                  <div className="quick-result-title">
+                    {quickResult.title}{quickResult.year ? ` (${quickResult.year})` : ""}
+                  </div>
+                  <div className="quick-result-sub">
+                    {quickResult.type}{quickResult.cast && quickResult.cast.length ? " · " + quickResult.cast.slice(0, 3).join(", ") : ""}
+                  </div>
+                  <div className="quick-result-row">
+                    {quickLogo ? (
+                      <img className="service-logo-chip" src={quickLogo} alt={quickResult.service} title={quickResult.service} />
+                    ) : (
+                      quickResult.service && <span className="tagchip">{quickResult.service}</span>
+                    )}
+                    {quickResult.rtScore !== null && quickResult.rtScore !== undefined && (
+                      <a className="rt-badge" href={quickResult.rtLink || "#"} target="_blank" rel="noopener noreferrer">
+                        <span className={rtClass(quickResult.rtScore)}>🍅</span>{quickResult.rtScore}% <span className="rt-link-icon">↗</span>
+                      </a>
+                    )}
+                  </div>
+                  {quickResult.genres && quickResult.genres.length > 0 && (
+                    <div className="chips-row" style={{ marginTop: "8px" }}>
+                      {quickResult.genres.map((g) => <span key={g} className="tagchip">{g}</span>)}
+                    </div>
+                  )}
+                  <button className="btn-full primary" style={{ marginTop: "16px" }} onClick={addQuickResultToList}>
+                    + Add to my list
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {discoverOpen && (
@@ -537,7 +756,7 @@ export default function Home() {
                     <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Watch again</button>
                   )}
                   <button className="btn-mini" onClick={() => findRelated(editingEntry)}>Find similar</button>
-                  <button className="btn-mini" onClick={() => { removeEntry(editingId); closeSheet(); }}>Remove</button>
+                  <button className="btn-mini" onClick={() => { archiveEntry(editingId); closeSheet(); }}>Archive</button>
                 </div>
               )}
 
@@ -821,7 +1040,7 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           {e.status === "watched" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Watch again</button>}
           <button className="btn-mini" onClick={() => onRelated(e)}>Find similar</button>
           <button className="btn-mini" onClick={() => onEdit(e)}>Edit</button>
-          <button className="btn-mini" onClick={() => onDelete(e.id)}>Remove</button>
+          <button className="btn-mini" onClick={() => onDelete(e.id)}>Archive</button>
         </div>
       </div>
     </div>
