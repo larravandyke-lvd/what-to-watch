@@ -756,7 +756,7 @@ export default function Home() {
                     <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Watch again</button>
                   )}
                   <button className="btn-mini" onClick={() => findRelated(editingEntry)}>Find similar</button>
-                  <button className="btn-mini" onClick={() => { archiveEntry(editingId); closeSheet(); }}>Archive</button>
+                  <button className="btn-mini" onClick={() => { if (window.confirm(`Archive "${editingEntry.title}"? You can restore it later from the Archived list.`)) { archiveEntry(editingId); closeSheet(); } }}>Archive</button>
                 </div>
               )}
 
@@ -953,6 +953,7 @@ function Tile({ e, onOpen, logo }) {
             🍅 {e.rtScore}% <span className="rt-link-icon">↗</span>
           </a>
         )}
+        {logo && <img className="tile-service-logo" src={logo} alt={e.service} title={e.service} />}
         {e.backdropUrl ? (
           <img src={e.backdropUrl} alt="" />
         ) : (
@@ -962,8 +963,8 @@ function Tile({ e, onOpen, logo }) {
       <div className="tile-caption">
         <div className="tile-title">{e.title}</div>
         <div className="tile-sub">
-          {logo ? <img className="service-logo" src={logo} alt={e.service} /> : <span>{e.service || e.type}</span>}
-          {e.episode ? <span>{" · " + e.episode}</span> : null}
+          {!logo && <span>{e.service || e.type}</span>}
+          {e.episode ? <span>{e.episode}</span> : null}
         </div>
       </div>
     </div>
@@ -1040,7 +1041,7 @@ function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated
           {e.status === "watched" && <button className="btn-mini" onClick={() => onMove(e.id, "watching")}>Watch again</button>}
           <button className="btn-mini" onClick={() => onRelated(e)}>Find similar</button>
           <button className="btn-mini" onClick={() => onEdit(e)}>Edit</button>
-          <button className="btn-mini" onClick={() => onDelete(e.id)}>Archive</button>
+          <button className="btn-mini" onClick={() => { if (window.confirm(`Archive "${e.title}"? You can restore it later from the Archived list.`)) onDelete(e.id); }}>Archive</button>
         </div>
       </div>
     </div>
