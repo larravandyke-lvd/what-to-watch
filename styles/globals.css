@@ -66,6 +66,8 @@ header p{ margin:6px 0 0; color:var(--text-muted); font-size:13px; }
 }
 .chip{ cursor:pointer; user-select:none; }
 .chip.active{ background:var(--gold); color:#1a1a1a; border-color:var(--gold); font-weight:600; }
+.clear-chip{ color:var(--red); border-color:var(--red); }
+.clear-chip:hover{ background:rgba(193,68,59,0.12); }
 
 .shelf-heading{
   margin:20px 16px 8px; font-size:13px; font-weight:700; color:var(--gold);

@@ -391,6 +391,11 @@ export default function Home() {
         {["Larra", "Eric", "Family"].map((t) => (
           <div key={t} className={`chip ${activeTags.includes(t) ? "active" : ""}`} onClick={() => toggleTagFilter(t)}>{t}</div>
         ))}
+        {(filterService || filterGenre || activeTags.length > 0) && (
+          <div className="chip clear-chip" onClick={() => { setFilterService(""); setFilterGenre(""); setActiveTags([]); }}>
+            ✕ Clear filters
+          </div>
+        )}
       </div>
 
       {viewMode === "flat" && (
