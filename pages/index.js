@@ -18,7 +18,7 @@ export default function Home() {
   const [filterService, setFilterService] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [activeTags, setActiveTags] = useState([]);
-  const [sortBy, setSortBy] = useState("alpha"); // alpha | recent
+  const [sortBy, setSortBy] = useState("recent"); // alpha | recent
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -45,6 +45,15 @@ export default function Home() {
   const [archivedOpen, setArchivedOpen] = useState(false);
   const cameraRef = useRef(null);
   const uploadRef = useRef(null);
+
+  // Always start at the top — prevents the browser from restoring a scrolled
+  // position from a previous visit, which hides the header on reopen.
+  useEffect(() => {
+    if (typeof window !== "undefined" && "scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
 
   // ---------- Realtime sync ----------
   useEffect(() => {
@@ -162,6 +171,7 @@ export default function Home() {
     setAiStatus("Looking up details…");
     try {
       const data = await callApi("/api/enrich", { title, year: year || "" });
+      const gotSomething = data && (data.type || data.service || (data.genres && data.genres.length) || (data.cast && data.cast.length));
       setForm((f) => ({
         ...f,
         type: data.type || f.type,
@@ -176,7 +186,7 @@ export default function Home() {
       callApi("/api/backdrop", { title, type: data.type || "TV Show", year: data.year || year || "" }, true)
         .then((b) => setPendingBackdrop(b.backdropUrl || null))
         .catch(() => {});
-      setAiStatus("");
+      setAiStatus(gotSomething ? "" : "Found the picture, but couldn't pull details — tap Look up to try again, or fill in manually.");
     } catch (e) {
       setAiStatus("Couldn't look that up — fill in manually");
     }
@@ -543,21 +553,21 @@ export default function Home() {
       <div className="filters">
         <div className="select-wrap">
           <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="recent">Sort: Recent</option>
             <option value="alpha">Sort: A–Z</option>
-            <option value="recent">Sort: Recently added</option>
           </select>
           <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
         </div>
         <div className="select-wrap">
           <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-            <option value="">Any service</option>
+            <option value="">Service</option>
             {services.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
         </div>
         <div className="select-wrap">
           <select className="chip" value={filterGenre} onChange={(e) => setFilterGenre(e.target.value)}>
-            <option value="">Any genre</option>
+            <option value="">Genre</option>
             {allGenres.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
           <span className="select-arrow"><svg width="9" height="6" viewBox="0 0 9 6" fill="none"><path d="M1 1L4.5 5L8 1" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
