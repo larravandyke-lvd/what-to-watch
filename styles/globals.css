@@ -296,7 +296,11 @@ textarea{ resize:vertical; min-height:50px; }
 .spinner{ width:13px; height:13px; border-radius:50%; border:2px solid rgba(232,185,89,0.25); border-top-color:var(--gold); animation:spin .8s linear infinite; }
 @keyframes spin{ to{ transform:rotate(360deg); } }
 
-.sheet-actions{ display:flex; gap:10px; margin-top:20px; }
+.sheet-actions{
+  position:sticky; bottom:0; z-index:15;
+  display:flex; gap:10px; margin-top:20px; padding:14px 0;
+  background:linear-gradient(to top, var(--surface) 60%, rgba(28,32,44,0));
+}
 .btn-full{ flex:1; padding:13px; border-radius:9px; border:none; font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; }
 .btn-full.primary{ background:var(--gold); color:#1a1a1a; }
 .btn-full.ghost{ background:transparent; border:1px solid var(--line); color:var(--text-muted); }
