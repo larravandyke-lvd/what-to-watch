@@ -871,7 +871,7 @@ export default function Home() {
                           onPick={(item) => handleDiscoverPick(item, "theaters")}
                           onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Trending This Week" items={trendingMovies}
-                          onPick={(item) => handleDiscoverPick(item, "consider")}
+                          onPick={(item) => handleDiscoverPick(item, nowPlaying.some((n) => n.id === item.id) ? "theaters" : "consider")}
                           onDismiss={dismissDiscoverItem} isOnList={(item) => !!findExistingEntry(item)} />
                         <DiscoverRow title="Coming Soon" items={upcoming}
                           onPick={(item) => handleDiscoverPick(item, "consider")}
