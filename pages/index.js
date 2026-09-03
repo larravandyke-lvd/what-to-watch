@@ -122,11 +122,6 @@ export default function Home() {
   async function startLookup(title) {
     if (!title) return;
     setCandidates([]);
-    // If a year is already specified, the person has disambiguated manually — skip the picker.
-    if (form.year.trim()) {
-      runEnrichment(title, form.year.trim());
-      return;
-    }
     setAiStatus("Searching…");
     try {
       const data = await callApi("/api/search-titles", { title }, true);
@@ -534,8 +529,6 @@ export default function Home() {
                 </div>
               )}
 
-              <label>Year (helps when the title is shared by more than one show/movie)</label>
-              <input type="text" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="e.g. 1991" />
 
               {aiStatus && <div className="status-line"><div className="spinner"></div><span>{aiStatus}</span></div>}
 
