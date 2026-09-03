@@ -9,6 +9,8 @@
   --gold-dim: #a4863f;
   --red: #C1443B;
   --green: #6FA97C;
+  --teal: #4FBDBA;
+  --teal-dim: #357f7d;
   --text: #F2EFE6;
   --text-muted: #8B8FA3;
   --radius: 10px;
@@ -203,8 +205,8 @@ textarea{ resize:vertical; min-height:50px; }
 
 .add-pill{
   display:inline-flex; align-items:center; gap:6px;
-  padding:9px 16px; border-radius:20px; border:1px solid var(--gold-dim);
-  background:var(--surface); color:var(--gold); font-size:13.5px; font-weight:600;
+  padding:9px 16px; border-radius:20px; border:1px solid var(--teal-dim);
+  background:var(--surface); color:var(--teal); font-size:13.5px; font-weight:600;
   cursor:pointer; font-family:inherit;
 }
-.add-pill:hover{ background:var(--surface-raised); border-color:var(--gold); }
+.add-pill:hover{ background:var(--surface-raised); border-color:var(--teal); }
