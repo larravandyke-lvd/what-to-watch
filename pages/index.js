@@ -14,6 +14,7 @@ export default function Home() {
   const [entries, setEntries] = useState([]);
   const [currentTab, setCurrentTab] = useState("want");
   const [viewMode, setViewMode] = useState("flat"); // flat | genre | service
+  const [layout, setLayout] = useState("tiles"); // tiles | list
   const [filterService, setFilterService] = useState("");
   const [filterGenre, setFilterGenre] = useState("");
   const [activeTags, setActiveTags] = useState([]);
@@ -256,6 +257,26 @@ export default function Home() {
     return Object.keys(groups).sort().map((k) => ({ key: k, items: groups[k] }));
   }
 
+  const editingEntry = editingId ? entries.find((x) => x.id === editingId) : null;
+
+  function renderItems(items) {
+    if (layout === "tiles") {
+      return (
+        <div className="tile-grid">
+          {items.map((e) => <Tile key={e.id} e={e} onOpen={openEdit} />)}
+        </div>
+      );
+    }
+    return (
+      <div className="list">
+        {items.map((e) => (
+          <Card key={e.id} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
+            onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <>
       <header>
@@ -264,6 +285,12 @@ export default function Home() {
         <p>Snap it, type it, never lose it again.</p>
         <div className={`sync-line ${syncStatus.startsWith("Couldn't") ? "error" : ""}`}>{syncStatus}</div>
       </header>
+
+      <div style={{ padding: "16px 16px 0" }}>
+        <button className="btn-full primary" onClick={openAdd} style={{ width: "100%" }}>
+          + Add something new
+        </button>
+      </div>
 
       <div className="tabs">
         {["all", "want", "watching", "watched"].map((s) => (
@@ -282,6 +309,11 @@ export default function Home() {
         <div className={`vbtn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
       </div>
 
+      <div className="view-toggle">
+        <div className={`vbtn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
+        <div className={`vbtn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
+      </div>
+
       <div className="filters">
         <select className="chip" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
           <option value="">Any service</option>
@@ -297,31 +329,18 @@ export default function Home() {
       </div>
 
       {viewMode === "flat" && (
-        <div className="list">
-          {filtered.length === 0 ? <EmptyState tab={currentTab} /> :
-            filtered.map((e) => (
-              <Card key={e.id} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
-                onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated} />
-            ))}
-        </div>
+        filtered.length === 0 ? <EmptyState tab={currentTab} /> : renderItems(filtered)
       )}
 
       {viewMode !== "flat" && (
-        <div className="list">
-          {filtered.length === 0 ? <EmptyState tab={currentTab} /> :
-            groupBy(viewMode === "genre" ? "genres" : "service").map((group) => (
-              <div key={group.key}>
-                <div className="shelf-heading">{group.key}</div>
-                {group.items.map((e) => (
-                  <Card key={e.id + group.key} e={e} onEdit={openEdit} onDelete={removeEntry} onMove={moveStatus}
-                    onEpisode={updateEpisode} onRelated={findRelated} onPickRelated={prefillFromRelated} />
-                ))}
-              </div>
-            ))}
-        </div>
+        filtered.length === 0 ? <EmptyState tab={currentTab} /> :
+          groupBy(viewMode === "genre" ? "genres" : "service").map((group) => (
+            <div key={group.key}>
+              <div className="shelf-heading">{group.key}</div>
+              {renderItems(group.items)}
+            </div>
+          ))
       )}
-
-      <button className="fab" onClick={openAdd}>+</button>
 
       {sheetOpen && (
         <div className="overlay show" onClick={(e) => { if (e.target.classList.contains("overlay")) closeSheet(); }}>
@@ -332,6 +351,25 @@ export default function Home() {
             <div className="sheet-inner">
               <button className="sheet-close" onClick={closeSheet}>✕</button>
               <h2>{editingId ? "Edit" : "Add something"}</h2>
+
+              {editingEntry && (
+                <div className="card-actions" style={{ marginBottom: "8px" }}>
+                  {editingEntry.status === "want" && (
+                    <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Start watching</button>
+                  )}
+                  {editingEntry.status === "watching" && (
+                    <>
+                      <button className="btn-mini primary" onClick={() => { moveStatus(editingId, "watched"); setStatus("watched"); }}>Mark watched</button>
+                      <button className="btn-mini" onClick={() => { moveStatus(editingId, "want"); setStatus("want"); }}>Back to list</button>
+                    </>
+                  )}
+                  {editingEntry.status === "watched" && (
+                    <button className="btn-mini" onClick={() => { moveStatus(editingId, "watching"); setStatus("watching"); }}>Watch again</button>
+                  )}
+                  <button className="btn-mini" onClick={() => findRelated(editingEntry)}>Find similar</button>
+                  <button className="btn-mini" onClick={() => { removeEntry(editingId); closeSheet(); }}>Remove</button>
+                </div>
+              )}
 
               <div className="method-row">
                 {[["type", "⌨", "Type it"], ["photo", "📷", "Photo of TV"], ["upload", "🖼", "Screenshot"], ["paste", "📋", "Paste image"]].map(([m, ic, label]) => (
@@ -450,6 +488,32 @@ function EmptyState({ tab }) {
 function rtClass(score) {
   if (score === null || score === undefined || score === "") return "";
   return Number(score) >= 60 ? "rt-fresh" : "rt-rotten";
+}
+
+function Tile({ e, onOpen }) {
+  return (
+    <div className="tile" onClick={() => onOpen(e)}>
+      <div className={`tile-status-dot ${e.status}`}></div>
+      {e.rtScore !== null && e.rtScore !== undefined && e.rtScore !== "" && (
+        <div className={`tile-rt ${rtClass(e.rtScore)}`}>🍅 {e.rtScore}%</div>
+      )}
+      <div className="tile-media">
+        {e.backdropUrl ? (
+          <img src={e.backdropUrl} alt="" />
+        ) : (
+          <div className="tile-fallback">🍿</div>
+        )}
+        <div className="tile-fade"></div>
+        <div className="tile-info">
+          <div className="tile-title">{e.title}</div>
+          <div className="tile-sub">
+            {e.service || e.type}
+            {e.episode ? ` · ${e.episode}` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Card({ e, onEdit, onDelete, onMove, onEpisode, onRelated, onPickRelated }) {
