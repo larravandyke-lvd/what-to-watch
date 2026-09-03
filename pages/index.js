@@ -35,6 +35,7 @@ export default function Home() {
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [discoverData, setDiscoverData] = useState(null);
   const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [discoverFilter, setDiscoverFilter] = useState("movies"); // movies | shows
   const [quickOpen, setQuickOpen] = useState(false);
   const [quickTitle, setQuickTitle] = useState("");
   const [quickCandidates, setQuickCandidates] = useState([]);
@@ -519,13 +520,15 @@ export default function Home() {
         ))}
       </div>
 
+      <div className="section-label">Group by</div>
       <div className="mode-row">
         <div className={`mode-btn ${viewMode === "flat" ? "active" : ""}`} onClick={() => setViewMode("flat")}>All</div>
         <div className={`mode-btn ${viewMode === "genre" ? "active" : ""}`} onClick={() => setViewMode("genre")}>By Genre</div>
         <div className={`mode-btn ${viewMode === "service" ? "active" : ""}`} onClick={() => setViewMode("service")}>By Service</div>
       </div>
 
-      <div className="mode-row mode-row-divided">
+      <div className="section-label section-label-divided">Layout</div>
+      <div className="mode-row">
         <div className={`mode-btn ${layout === "tiles" ? "active" : ""}`} onClick={() => setLayout("tiles")}>🔳 Tiles</div>
         <div className={`mode-btn ${layout === "list" ? "active" : ""}`} onClick={() => setLayout("list")}>☰ List</div>
       </div>
@@ -536,6 +539,7 @@ export default function Home() {
         </div>
       )}
 
+      <div className="section-label section-label-divided">Filter &amp; sort</div>
       <div className="filters">
         <select className="chip" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
           <option value="alpha">Sort: A–Z</option>
@@ -697,19 +701,37 @@ export default function Home() {
               <button className="sheet-close" onClick={() => setDiscoverOpen(false)}>✕ Close</button>
             </div>
             <div className="sheet-inner" style={{ paddingBottom: "28px" }}>
+              <div className="mode-row" style={{ padding: "0 0 14px" }}>
+                <div className={`mode-btn ${discoverFilter === "movies" ? "active" : ""}`} onClick={() => setDiscoverFilter("movies")}>🎬 Movies</div>
+                <div className={`mode-btn ${discoverFilter === "shows" ? "active" : ""}`} onClick={() => setDiscoverFilter("shows")}>📺 Shows</div>
+              </div>
               {discoverLoading && (
                 <div className="status-line"><div className="spinner"></div><span>Loading…</span></div>
               )}
               {discoverData && !discoverLoading && (
                 <>
-                  <DiscoverRow title="In Theaters Now" items={discoverData.nowPlaying}
-                    onPick={(item) => quickAddFromDiscover(item, "theaters")} />
-                  <DiscoverRow title="Trending This Week" items={discoverData.trending}
-                    onPick={(item) => quickAddFromDiscover(item, "consider")} />
-                  <DiscoverRow title="Coming Soon" items={discoverData.upcoming}
-                    onPick={(item) => quickAddFromDiscover(item, "consider")} />
-                  {discoverData.trending.length === 0 && discoverData.nowPlaying.length === 0 && discoverData.upcoming.length === 0 && (
-                    <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                  {discoverFilter === "movies" ? (
+                    <>
+                      <DiscoverRow title="In Theaters Now" items={discoverData.nowPlaying}
+                        onPick={(item) => quickAddFromDiscover(item, "theaters")} />
+                      <DiscoverRow title="Trending This Week" items={discoverData.trending.filter((x) => x.type === "Movie")}
+                        onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                      <DiscoverRow title="Coming Soon" items={discoverData.upcoming}
+                        onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                      {discoverData.nowPlaying.length === 0 && discoverData.upcoming.length === 0 && (
+                        <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <DiscoverRow title="New Episodes This Week" items={discoverData.onTheAir}
+                        onPick={(item) => quickAddFromDiscover(item, "want")} />
+                      <DiscoverRow title="Trending This Week" items={discoverData.trending.filter((x) => x.type === "TV Show")}
+                        onPick={(item) => quickAddFromDiscover(item, "consider")} />
+                      {discoverData.onTheAir.length === 0 && discoverData.trending.filter((x) => x.type === "TV Show").length === 0 && (
+                        <div className="empty"><div className="big">Couldn't load right now</div>Check your connection and try again.</div>
+                      )}
+                    </>
                   )}
                 </>
               )}
