@@ -50,6 +50,27 @@ export default function Home() {
     return () => unsub();
   }, []);
 
+  async function handlePasteButton() {
+    if (!navigator.clipboard || !navigator.clipboard.read) {
+      setAiStatus("Pasting isn't supported here — try Take a pic or Screenshot instead.");
+      return;
+    }
+    try {
+      const items = await navigator.clipboard.read();
+      for (const item of items) {
+        const imageType = item.types.find((t) => t.startsWith("image/"));
+        if (imageType) {
+          const blob = await item.getType(imageType);
+          analyzePhoto(blob);
+          return;
+        }
+      }
+      setAiStatus("No image found on the clipboard — copy a screenshot first, then tap paste.");
+    } catch (e) {
+      setAiStatus("Couldn't access the clipboard here — try Take a pic or Screenshot instead.");
+    }
+  }
+
   // Listen for clipboard paste (e.g. Cmd+V / Ctrl+V of a screenshot) while the sheet is open
   useEffect(() => {
     if (!sheetOpen) return;
@@ -460,8 +481,13 @@ export default function Home() {
                 ))}
               </div>
               {method === "paste" && (
-                <div className="status-line" style={{ color: "var(--text-muted)" }}>
-                  Copy a screenshot, then press ⌘V (Mac) or Ctrl+V (Windows) anywhere on this screen.
+                <div style={{ marginTop: "6px" }}>
+                  <div className="status-line" style={{ color: "var(--text-muted)", marginBottom: "8px" }}>
+                    On a computer: copy a screenshot, then press ⌘V or Ctrl+V anywhere on this screen.
+                  </div>
+                  <button type="button" className="btn-mini primary" onClick={handlePasteButton}>
+                    📋 Tap to paste
+                  </button>
                 </div>
               )}
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
